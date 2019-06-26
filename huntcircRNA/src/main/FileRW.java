@@ -552,6 +552,7 @@ public class FileRW {
 						theJuncLine.append((double) (inputids.size() + this_junc.getSingle_input_reads()) * 1000000.0 / (double) input_reads);
 						theJuncLine.append('\t');
 						theJuncLine.append(ids.size() + inputids.size());
+						theJuncLine.append('\t');
 						theJuncLine.append((double) (ids.size() + inputids.size() + this_junc.getSingle_ip_reads() + this_junc.getSingle_input_reads()) * 1000000.0 / (double) (input_reads + ip_reads));
 						theJuncLine.append('\t');
 						theJuncLine.append(String.format("%.4f", fisher_test.calpValue(ids.size(), inputids.size(), this_junc.getTR() - ids.size(), this_junc.getInputReads() - inputids.size(), 2)));
@@ -1216,7 +1217,7 @@ public class FileRW {
 					else{
 						record.getAdd_info().append("\tloose");
 					}
-					if (entry.getValue().isIp_junc()) {
+					if (entry.getValue().getReadID().size() > 0) {
 						circ_high.add(record.toString());
 					}
 					else if (entry.getValue().getSingle_ip_reads() > 0) {

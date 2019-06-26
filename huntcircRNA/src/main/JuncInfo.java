@@ -18,8 +18,6 @@ public class JuncInfo {
 	private int inputReads=0;
 	private int[] intron=null;
 	private char strand='.';
-	private boolean ip_junc=false;
-	private boolean input_junc=false;
 	private boolean intron_flag=false;
 	private boolean fix_start_exon=false;
 	private boolean fix_end_exon=false;
@@ -174,31 +172,6 @@ public class JuncInfo {
 
 	public void setStrand(char strand) {
 		this.strand = strand;
-	}
-
-	public boolean isIp_junc() {
-		return ip_junc;
-	}
-
-	public void setIp_junc(boolean ip_junc) {
-		this.ip_junc = ip_junc;
-	}
-
-	public boolean isInput_junc() {
-		return input_junc;
-	}
-
-	public void setInput_junc(boolean input_junc) {
-		this.input_junc = input_junc;
-	}
-	
-	public void setJunc_flag(boolean ip_flag) {
-		if (ip_flag || this.ip_junc) {
-			this.ip_junc=true;
-		}
-		else {
-			this.input_junc=true;
-		}
 	}
 
 	public int getSingle_ip_reads() {

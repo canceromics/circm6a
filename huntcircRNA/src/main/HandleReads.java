@@ -97,7 +97,6 @@ public class HandleReads {
 							the_junc = new JuncInfo(clip_seg.pos_start, clip_seg.pos_end);
 							if (add_flag && (!pair_flag || examin_list2.size() == 0 || this.pairEndPCC(the_junc, examin_list2, clip_seg.chr_num))) {
 								the_junc.addReadID(id, ip_flag);
-								the_junc.setJunc_flag(ip_flag);
 								the_chr.put(key, the_junc);
 							}
 						}
@@ -105,7 +104,6 @@ public class HandleReads {
 							JuncInfo the_junc = the_chr.get(key);
 							if (!pair_flag || examin_list2.size() == 0 || this.pairEndPCC(the_junc, examin_list2, clip_seg.chr_num)) {
 								the_junc.addReadID(id, ip_flag);
-								the_junc.setJunc_flag(ip_flag);
 							}
 						}
 					}
@@ -126,7 +124,6 @@ public class HandleReads {
 							the_junc = new JuncInfo(clip_seg.pos_start, clip_seg.pos_end);
 							if (add_flag && (!pair_flag || examin_list1.size() == 0 || this.pairEndPCC(the_junc, examin_list1, clip_seg.chr_num))) {
 								the_junc.addReadID(id, ip_flag);
-								the_junc.setJunc_flag(ip_flag);
 								the_chr.put(key, the_junc);
 							}
 	//						reads.add(0, this.getchrSym(clip_seg.chr_num) + "\t" + key);
@@ -136,7 +133,6 @@ public class HandleReads {
 							JuncInfo the_junc = the_chr.get(key);
 							if (!pair_flag || examin_list1.size() == 0 || this.pairEndPCC(the_junc, examin_list1, clip_seg.chr_num)) {
 								the_junc.addReadID(id, ip_flag);
-								the_junc.setJunc_flag(ip_flag);
 							}
 						}
 					}
