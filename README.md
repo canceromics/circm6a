@@ -22,7 +22,7 @@ Circm6A is a powerful tool for detection  m6A modification of circular RNA(circR
 
 ## Installation
 ```
-git clone https://github.com/XXXX
+git clone https://github.com/canceromics/circm6a.git
 cd Circm6A
 ```
 
