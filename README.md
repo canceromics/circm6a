@@ -64,39 +64,27 @@ For usage:
 ### Example
 
   ```
-java -Xmx16g -jar Circm6A.jar -ip IP.bam -input Input.bam -r Gencode.gtf -g hg38.fa -o ${out_dir}/${file_prefix}
+java -Xmx16g -jar Circm6A.jar -ip IP.bam -input Input.bam -r Gencode.gtf -g hg38.fa -o ${out_dir}/${file_prefix} -rrna -pair  -dev 5 -sup 5
   ```
 
-####  Passing JVM options to gatk
-
-* To pass JVM arguments to GATK, run `gatk` with the `--java-options` argument: 
-
-    ```
-    ./gatk --java-options "-Xmx4G -XX:+PrintGCDetails" <rest of command>
-    ```
 ### Output
-* output_dir/quant/quant.txt
+* output_dir/quant/prefix_circ.bed
 
 | Field       | Description                           |
 | :---------- | :------------------------------------ |
 | chrom       | Chromosome                            |
-| start       | Start of circular RNA                 |
-| end         | End of circular RNA                   |
+| chromStart       | Start of circular RNA                 |
+| chromEnd         | End of circular RNA                   |
 | name        | Circular RNA/Junction reads           |
 | score       | Flag of fusion junction realignment   |
 | strand      | + or - for strand                     |
 | thickStart  | No meaning                            |
 | thickEnd    | No meaning                            |
 | itemRgb     | 0,0,0                                 |
-| exonCount   | Number of exons                       |
-| exonSizes   | Exon sizes                            |
-| exonOffsets | Exon offsets                          |
-| readNumber  | Number of junction reads              |
-| circType    | Type of circular RNA                  |
-| geneName    | Name of gene                          |
-| isoformName | Name of isoform                       |
-| index       | Index of exon or intron               |
-| flankIntron | Left intron/Right intron              |
+| blockCount   | Number of exons                       |
+| blockSizes   | Exon sizes                            |
+| blockStarts | Exon offsets                          |
+
 
 
 
