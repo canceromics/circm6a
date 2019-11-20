@@ -27,7 +27,7 @@ cd Circm6A
 ```
 
 ## QuickStart
-* input 
+* Start from bam files of IP sample and Input sample
 
 ```
 java -Xmx16g -jar Circm6A.jar -ip IP.bam -input Input.bam -r Gencode.gtf -g hg38.fa -o ${out_dir}/${file_prefix}
@@ -35,28 +35,31 @@ java -Xmx16g -jar Circm6A.jar -ip IP.bam -input Input.bam -r Gencode.gtf -g hg38
 
 ## Usage
 
-* The standard way to run GATK4 tools is via the **`gatk`** wrapper script located in the root directory of a clone of this repository.
-    * Requires Python 2.6 or greater (this includes Python 3.x)
-    * You need to have built the GATK as described in the [Building GATK4](#building) section above before running this script.
-    * There are several ways `gatk` can be run:
-        * Directly from the root of your git clone after building
-        * By extracting the zip archive produced by `./gradlew bundle` to a directory, and running `gatk` from there
-        * Manually putting the `gatk` script within the same directory as fully-packaged GATK jars produced by `./gradlew localJar` and/or `./gradlew sparkJar`
-        * Defining the environment variables `GATK_LOCAL_JAR` and `GATK_SPARK_JAR`, and setting them to the paths to the GATK jars produced by `./gradlew localJar` and/or `./gradlew sparkJar` 
-    * `gatk` can run non-Spark tools as well as Spark tools, and can run Spark tools locally, on a Spark cluster, or on Google Cloud Dataproc.
-    * ***Note:*** running with `java -jar` directly and bypassing `gatk` causes several important system properties to not get set, including htsjdk compression level!
-    
-* For help on using `gatk` itself, run **`./gatk --help`**
-
-* To print a list of available tools, run **`./gatk --list`**.
-    * Spark-based tools will have a name ending in `Spark` (eg., `BaseRecalibratorSpark`). Most other tools are non-Spark-based.
-
-* To print help for a particular tool, run **`./gatk ToolName --help`**.
-
-* To run a non-Spark tool, or to run a Spark tool locally, the syntax is: **`./gatk ToolName toolArguments`**.
-
-* Tool arguments that allow multiple values, such as -I, can be supplied on the command line using a file with the extension ".args". Each line of the file should contain a
-  single value for the argument.
+```
+java -Xmx16g -jar /disk/yeying/bin/circ_pipline/circm6A.jar -h
+For usage:
+	-ip	IP sam/bam file searching back junctions
+	-input	INPUT sam/bam file searching back junctions, calling IP peaks with IP file)
+	-trim	trimed sam/bam file calling peak instead of INPUT file
+	-g	a reference genome file which is the same as the mapping one
+	-r	a reference gencode file in gtf format
+	-o	prefix of out files
+	-rrna	enable rRNA remove (can specify a bed file)
+	-circ	provide circ bed file to call peak
+	-adjust	choose method for p-value adjusting [bon|bh](bon means Bonferroni, bh means Benjamini and Hochberg)
+	-sup	min support number of a back junction (default is 1)
+	-back	background size in peak calling (0 for whole genome, default is 0)
+	-window	window size in peak calling (default is 25)
+	-peak	min peak length in peak calling (default is 100)
+	-cl	cutoff of distance bewteen junction points (default is 100)
+	-clmax	upper bound cutoff of distance bewteen junction points (default is 200000)
+	-dev	max deviation permitted in searching back junctions (default is 5)
+	-pt	threshold for p-value in peak calling (default is 0.05)
+	-detail	output circ detail file
+	-pair	enable pair end examination of back junction
+	-uniq	enable using only uniq mapping reads
+	-h	show help text
+```
 
 ### Example
 
