@@ -17,8 +17,6 @@ Circm6A is a powerful tool for detection  m6A modification of circular RNA(circR
 
 * JDK 8
 * Gradle 3.0+
-* A working terminal
-* At least some knowledge
 
 ## Installation
 ```
