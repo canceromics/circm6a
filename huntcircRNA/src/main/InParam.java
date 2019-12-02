@@ -10,7 +10,7 @@ public class InParam {
 	private String out_prefix=null;
 	private String rrna_bed=null;
 	private String circ_bed=null;
-	private int sup_reads=1;
+	private int sup_reads=2;
 	private int background_size=0;
 	private int window_size=25;
 	private int peak_length=100;
@@ -18,7 +18,7 @@ public class InParam {
 	private int read_dev=5;
 	private double p_value=0.05;
 	private boolean out_detail=false;
-	private boolean pair_mode=false;
+	private boolean pair_mode=true;
 	private boolean uniq_mode=false;
 	private boolean retain_test=false;
 	private boolean help_flag=false;
