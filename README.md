@@ -29,7 +29,7 @@ jar -cvmf META-INF/MANIFEST.MF circm6a.jar *
 * Start from bam files of IP sample and Input sample
 
 ```
-java -Xmx16g -jar circm6A.jar -ip IP.bam -input Input.bam -r Gencode.gtf -g hg38.fa -o ${out_dir}/${file_prefix}
+java -Xmx16g -jar circm6A.jar -ip IP.bam -input Input.bam -o ${out_dir}/${file_prefix}
 ```
 
 ## Usage
