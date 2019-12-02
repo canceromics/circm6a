@@ -16,25 +16,26 @@ Circm6A is a powerful tool for detection  m6A modification of circular RNA(circR
 ## Requirements
 
 * JDK 8
-* Gradle 3.0+
 
 ## Installation
 ```
 git clone https://github.com/canceromics/circm6a.git
-cd Circm6A
+cd circm6a/huntcircRNA
+javac -d ./ -classpath ./lib/htsjdk-2.10.1.jar ./src/main/*.java
+jar -cvmf META-INF/MANIFEST.MF circm6a.jar *
 ```
 
 ## QuickStart
 * Start from bam files of IP sample and Input sample
 
 ```
-java -Xmx16g -jar Circm6A.jar -ip IP.bam -input Input.bam -r Gencode.gtf -g hg38.fa -o ${out_dir}/${file_prefix}
+java -Xmx16g -jar circm6A.jar -ip IP.bam -input Input.bam -r Gencode.gtf -g hg38.fa -o ${out_dir}/${file_prefix}
 ```
 
 ## Usage
 
 ```
-java -Xmx16g -jar /disk/yeying/bin/circ_pipline/circm6A.jar -h
+java -Xmx16g -jar circm6A.jar -h
 For usage:
 	-ip	IP sam/bam file searching back junctions
 	-input	INPUT sam/bam file searching back junctions, calling IP peaks with IP file)
@@ -62,11 +63,11 @@ For usage:
 ### Example
 
   ```
-java -Xmx16g -jar Circm6A.jar -ip IP.bam -input Input.bam -r Gencode.gtf -g hg38.fa -o ${out_dir}/${file_prefix} -rrna -pair  -dev 5 -sup 5
+java -Xmx16g -jar circm6A.jar -ip IP.bam -input Input.bam -r Gencode.gtf -g hg38.fa -o ${out_dir}/${file_prefix} -rrna -pair  -dev 5 -sup 5
   ```
 
 ### Output
-* output_dir/quant/prefix_circ.bed
+* ${out_dir}/${file_prefix}_circ.bed
 
 | Field       | Description                           |
 | :---------- | :------------------------------------ |
