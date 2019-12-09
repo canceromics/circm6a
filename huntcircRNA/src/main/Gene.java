@@ -99,14 +99,13 @@ public class Gene {
 		return out;
 	}
 	
-	public ArrayList<Integer> scriptExons(JuncInfo junc, int dev, int[] intron) {
-		ArrayList<Integer> out = new ArrayList<>();
+	public int scriptExons(JuncInfo junc, int dev, int exon_num) {
+		int out = exon_num;
 		for (int i = 0; i < this.transcripts.size(); ++i) {
 			Transcript script = this.transcripts.get(i);
 			int fixed_start = -1;
 			int fixed_end = -1;
-			ArrayList<Integer> exons = new ArrayList<>();
-			int[] temp_in = {-1, Integer.MAX_VALUE};
+			int exons = 0;
 			for (int j = 0; j < script.getExons().size(); ++j) {
 				ExonInfo exon = script.getExon(j);
 				int start = exon.getStart_position();
@@ -118,50 +117,81 @@ public class Gene {
 					fixed_end = end;
 				}
 				if (junc.getSP() <= end && junc.getEP() >= start) {
-					exons.add(start);
-					exons.add(end);
-				}
-				else if (junc.getSP() > end){
-					temp_in[1] = Math.min(temp_in[1], junc.getSP() - 1);
-				}
-				else {
-					temp_in[0] = Math.max(temp_in[0], junc.getEP() + 1);
+					++exons;
 				}
 			}
-			if (exons.size() > out.size()) {
-				boolean fix_flag = false;
+			if (exons > out) {
+				int fix_flag = 0;
+				int sp = 0;
+				int ep = 0;
+				if (junc.isFix_start_exon()) {
+					--fix_flag;
+				}
+				if (junc.isFix_end_exon()) {
+					--fix_flag;
+				}
 				if (fixed_start >= 0) {
-					junc.setSP(fixed_start);
-					junc.setFix_start_exon(true);
-					fix_flag = true;
+					++fix_flag;
+					sp = fixed_start;
+				}
+				else {
+					sp = junc.getSP();
 				}
 				if (fixed_end >= 0) {
-					junc.setEP(fixed_end);
-					junc.setFix_end_exon(true);
-					fix_flag = true;
+					++fix_flag;
+					ep = fixed_end;
 				}
-				if (fix_flag || (!junc.isFix_start_exon() && !junc.isFix_end_exon())){
+				else {
+					ep = junc.getEP();
+				}
+				if (fix_flag >= 0){
 					out = exons;
-					intron[0] = temp_in[0];
-					intron[1] = temp_in[1];
+					junc.setSP(sp);
+					junc.setFix_start_exon(fixed_start >= 0);
+					junc.setEP(ep);
+					junc.setFix_end_exon(fixed_end >= 0);
+					junc.setScript(script);
 				}
 			}
 			else {
-				boolean fix_flag = false;
-				if (!junc.isFix_start_exon() && fixed_start >= 0) {
-					junc.setSP(fixed_start);
-					junc.setFix_start_exon(true);
-					fix_flag = true;
+				int fix_flag = 0;
+				int sp = 0;
+				int ep = 0;
+				if (junc.isFix_start_exon()) {
+					--fix_flag;
 				}
-				if (!junc.isFix_end_exon() && fixed_end >= 0) {
-					junc.setEP(fixed_end);
-					junc.setFix_end_exon(true);
-					fix_flag = true;
+				if (junc.isFix_end_exon()) {
+					--fix_flag;
 				}
-				if (fix_flag) {
+				if (fixed_start >= 0) {
+					++fix_flag;
+					sp = fixed_start;
+				}
+				else {
+					sp = junc.getSP();
+				}
+				if (fixed_end >= 0) {
+					++fix_flag;
+					ep = fixed_end;
+				}
+				else {
+					ep = junc.getEP();
+				}
+				if (fix_flag > 0){
 					out = exons;
-					intron[0] = temp_in[0];
-					intron[1] = temp_in[1];
+					junc.setSP(sp);
+					junc.setFix_start_exon(fixed_start >= 0);
+					junc.setEP(ep);
+					junc.setFix_end_exon(fixed_end >= 0);
+					junc.setScript(script);
+				}
+				if (fix_flag == 0 && exons == out && 
+						(junc.getScript() == null || script.getEnd() - script.getStart() > junc.getScript().getEnd() - junc.getScript().getStart())) {
+					junc.setSP(sp);
+					junc.setFix_start_exon(fixed_start >= 0);
+					junc.setEP(ep);
+					junc.setFix_end_exon(fixed_end >= 0);
+					junc.setScript(script);
 				}
 			}
 		}

@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -103,23 +104,38 @@ public class FileRW {
 		try {
 			reader = new BufferedReader(new FileReader(fi));
 			String tempString = null;
+			StringBuffer bases = new StringBuffer();
 			int chrNum = 0;
 			String chr = null;
 			while ((tempString = reader.readLine()) != null){
 				if (tempString.charAt(0) == '>'){
-					chr = tempString.substring(1);
+					if (bases.length() > 0) {
+						System.out.println("Possible BSJ:" + in.get(chrNum).size());
+						HashMap<String, JuncInfo> fix_junc = fixChrJunc(bases.toString(), in.get(chrNum));
+						in.set(chrNum, fix_junc);
+						if (lengths.size() >= 25) {
+							lengths.set(chrNum, bases.length());
+						}
+						FileRW.printNow(chr + " filted BSJ: " + in.get(chrNum).size() + " at");
+					}
+					String[] temp_chr = tempString.split("\\s+");
+					chr = temp_chr[0].substring(1);
 					System.out.println("Searching " + chr);
 					chrNum = ExonInfo.chrSymbolToNum(chr);
+					bases.setLength(0);
 				}
 				else {
-					System.out.println("Possible BSJ:" + in.get(chrNum).size());
-					HashMap<String, JuncInfo> fix_junc = fixChrJunc(tempString, in.get(chrNum));
-					in.set(chrNum, fix_junc);
-					if (lengths.size() >= 25) {
-						lengths.set(chrNum, tempString.length());
-					}
-					FileRW.printNow(chr + " filted BSJ: " + in.get(chrNum).size() + " at");
+					bases.append(tempString);
 				}
+			}
+			if (bases.length() > 0) {
+				System.out.println("Possible BSJ:" + in.get(chrNum).size());
+				HashMap<String, JuncInfo> fix_junc = fixChrJunc(bases.toString(), in.get(chrNum));
+				in.set(chrNum, fix_junc);
+				if (lengths.size() >= 25) {
+					lengths.set(chrNum, bases.length());
+				}
+				FileRW.printNow(chr + " filted BSJ: " + in.get(chrNum).size() + " at");
 			}
 			reader.close();
 		}
@@ -298,7 +314,7 @@ public class FileRW {
 				int chr_num = ExonInfo.chrSymbolToNum(cols[0]);
 				if (chr_num >= 0 && chr_num < 25) {
 					HashMap<String, JuncInfo> juncs = out.get(chr_num);
-					int start = Integer.parseInt(cols[1]);
+					int start = Integer.parseInt(cols[1]) + 1;
 					int end = Integer.parseInt(cols[2]);
 					String key = cols[1] + "\t" + cols[2];
 					if (!juncs.containsKey(key)) {
@@ -406,7 +422,7 @@ public class FileRW {
 				else{
 					devOff = ag;
 				}
-				AGDev = chr.substring(ag - devOff, ag + halfDev);
+				AGDev = chr.substring(ag - devOff, ag + end_dev_Off);
 			}
 			if (!thisJunc.isFix_end_exon()) {
 				end_dev_Off = halfDev;
@@ -515,6 +531,7 @@ public class FileRW {
 		for (int i=0; i < in.size(); ++i) {
 			for (Entry<String, JuncInfo> entry : in.get(i).entrySet()) {
 				JuncInfo this_junc = entry.getValue();
+				this_junc.setExonIntron(args.getRead_dev());
 				ArrayList<String> ids = this_junc.getReadID();
 				ArrayList<String> inputids = this_junc.getInputids();
 				if (ids.size() + inputids.size() >= sup_read) {
@@ -522,7 +539,7 @@ public class FileRW {
 					String chrSym = ExonInfo.chrNumToSymbol(i);
 					theJuncLine.append(chrSym);
 					theJuncLine.append('\t');
-					theJuncLine.append(this_junc.getSP());
+					theJuncLine.append(this_junc.getSP() - 1);
 					theJuncLine.append('\t');
 					theJuncLine.append(this_junc.getEP());
 					theJuncLine.append('\t');
@@ -540,20 +557,27 @@ public class FileRW {
 						theJuncLine.append("EIciRNA");
 						theJuncLine.append('\t');
 					}
-					theJuncLine.append(this_junc.getExons().size() / 2);
+					int exon = 0;
+					for(int j = 0; j < this_junc.getExons().size(); j += 2) {
+						if (this_junc.getExons().get(j) <= this_junc.getSP() ||
+								this_junc.getExons().get(j + 1) >= this_junc.getEP()) {
+							++exon;
+						}
+					}
+					theJuncLine.append(exon);
 					theJuncLine.append('\t');
 					theJuncLine.append(ids.size());
 					theJuncLine.append('\t');
-					theJuncLine.append((double) (ids.size() + this_junc.getSingle_ip_reads()) * 1000000.0 / (double) ip_reads);
+					theJuncLine.append((double) (2 * ids.size() + this_junc.getSingle_ip_reads()) * 1000000.0 / (double) ip_reads);
 					theJuncLine.append('\t');
 					if (ip_flag) {
 						theJuncLine.append(inputids.size());
 						theJuncLine.append('\t');
-						theJuncLine.append((double) (inputids.size() + this_junc.getSingle_input_reads()) * 1000000.0 / (double) input_reads);
+						theJuncLine.append((double) (2 * inputids.size() + this_junc.getSingle_input_reads()) * 1000000.0 / (double) input_reads);
 						theJuncLine.append('\t');
 						theJuncLine.append(ids.size() + inputids.size());
 						theJuncLine.append('\t');
-						theJuncLine.append((double) (ids.size() + inputids.size() + this_junc.getSingle_ip_reads() + this_junc.getSingle_input_reads()) * 1000000.0 / (double) (input_reads + ip_reads));
+						theJuncLine.append((double) (2 * ids.size() + 2 * inputids.size() + this_junc.getSingle_ip_reads() + this_junc.getSingle_input_reads()) * 1000000.0 / (double) (input_reads + ip_reads));
 						theJuncLine.append('\t');
 						theJuncLine.append(String.format("%.4f", fisher_test.calpValue(ids.size(), inputids.size(), this_junc.getTR() - ids.size(), this_junc.getInputReads() - inputids.size(), 2)));
 						theJuncLine.append('\t');
@@ -591,27 +615,27 @@ public class FileRW {
 					}
 					int ip_linear = 0;
 					int input_linear = 0;
-					Iterator<Node<ReadInfo>> nodes = itree.get(i).overlappers(this_junc.getSP(), this_junc.getSP());
+					Iterator<Node<ReadInfo>> nodes = itree.get(i).overlappers(this_junc.getSP() - halfDev, this_junc.getSP() + halfDev);
 					while (nodes.hasNext()){
 						Node<ReadInfo> node = nodes.next();
-						ip_linear += node.getValue().getNo_xa();
+						ip_linear += node.getValue().getNo_xa() - node.getValue().getCirc_front() - node.getValue().getFront();
 					}
-					nodes = itree.get(i).overlappers(this_junc.getEP(), this_junc.getEP());
+					nodes = itree.get(i).overlappers(this_junc.getEP() - halfDev, this_junc.getEP() + halfDev);
 					while (nodes.hasNext()){
 						Node<ReadInfo> node = nodes.next();
-						ip_linear += node.getValue().getNo_xa();
+						ip_linear += node.getValue().getNo_xa() - node.getValue().getCirc_behind() - node.getValue().getBehind();
 					}
-					nodes = itree_input.get(i).overlappers(this_junc.getSP(), this_junc.getSP());
+					nodes = itree_input.get(i).overlappers(this_junc.getSP() - halfDev, this_junc.getSP() + halfDev);
 					while (nodes.hasNext()){
 						Node<ReadInfo> node = nodes.next();
-						input_linear += node.getValue().getNo_xa();
+						input_linear += node.getValue().getNo_xa() - node.getValue().getCirc_front() - node.getValue().getFront();
 					}
-					nodes = itree_input.get(i).overlappers(this_junc.getEP(), this_junc.getEP());
+					nodes = itree_input.get(i).overlappers(this_junc.getEP() - halfDev, this_junc.getEP() + halfDev);
 					while (nodes.hasNext()){
 						Node<ReadInfo> node = nodes.next();
-						input_linear += node.getValue().getNo_xa();
+						input_linear += node.getValue().getNo_xa() - node.getValue().getCirc_behind() - node.getValue().getBehind();
 					}
-					double ratio = (double) (2 * ids.size() + 2 * inputids.size() + this_junc.getSingle_ip_reads() + this_junc.getSingle_input_reads()) / (double) (ip_linear + input_linear);
+					double ratio = (double) (2 * ids.size() + 2 * inputids.size() + this_junc.getSingle_ip_reads() + this_junc.getSingle_input_reads()) / (double) (ip_linear + input_linear + 2 * ids.size() + 2 * inputids.size() + this_junc.getSingle_ip_reads() + this_junc.getSingle_input_reads());
 					theJuncLine.append('\t');
 					theJuncLine.append(ratio);
 					out.add(theJuncLine.toString());
@@ -620,17 +644,17 @@ public class FileRW {
 						intron_line.append(chrSym);
 						intron_line.append('\t');
 						if (this_junc.getIntron()[0] != -1) {
-							intron_line.append(this_junc.getIntron()[0]);
+							intron_line.append(this_junc.getIntron()[0] - 1);
 						}
 						else {
-							intron_line.append(this_junc.getExons().get(0) - 5000);
+							intron_line.append(this_junc.getExons().get(0) - 5001);
 						}
 						intron_line.append('\t');
 						intron_line.append(this_junc.getExons().get(0) - 1);
 						intron_line.append('\t');
 						intron_line.append(chrSym);
 						intron_line.append('_');
-						intron_line.append(this_junc.getSP());
+						intron_line.append(this_junc.getSP() - 1);
 						intron_line.append('_');
 						intron_line.append(this_junc.getEP());
 						intron_line.append("_intron_");
@@ -640,11 +664,13 @@ public class FileRW {
 						else {
 							intron_line.append("3ss");
 						}
+						intron_line.append("\t0\t");
+						intron_line.append(this_junc.getStrand());
 						out_list.add(intron_line.toString());
 						intron_line.setLength(0);
 						intron_line.append(chrSym);
 						intron_line.append('\t');
-						intron_line.append(this_junc.getExons().get(this_junc.getExons().size() - 1) + 1);
+						intron_line.append(this_junc.getExons().get(this_junc.getExons().size() - 1));
 						intron_line.append('\t');
 						if (this_junc.getIntron()[1] != Integer.MAX_VALUE) {
 							intron_line.append(this_junc.getIntron()[1]);
@@ -655,7 +681,7 @@ public class FileRW {
 						intron_line.append('\t');
 						intron_line.append(chrSym);
 						intron_line.append('_');
-						intron_line.append(this_junc.getSP());
+						intron_line.append(this_junc.getSP() - 1);
 						intron_line.append('_');
 						intron_line.append(this_junc.getEP());
 						intron_line.append("_intron_");
@@ -665,6 +691,8 @@ public class FileRW {
 						else {
 							intron_line.append("5ss");
 						}
+						intron_line.append("\t0\t");
+						intron_line.append(this_junc.getStrand());
 						out_list.add(intron_line.toString());
 					}
 				}
@@ -679,7 +707,7 @@ public class FileRW {
 	 * @param in junctions with key of start and end split by chromosomes
 	 * @return a list of string include head to be put out
 	 */
-	public static ArrayList<String> juncsToBed(ArrayList<HashMap<String,JuncInfo>> in){
+	public static ArrayList<String> juncsToBed(ArrayList<HashMap<String,JuncInfo>> in, InParam args){
 		ArrayList<String> out = new ArrayList<String>();
 		out.add(Bed12.getHeader());
 		for (int chr=0; chr < in.size(); chr++) {
@@ -700,13 +728,18 @@ public class FileRW {
 					record.setChr(chr_symbol);
 					record.setStart(the_junc.getSP());
 					record.setEnd(the_junc.getEP());
-					StringBuffer genes = new StringBuffer();
-					genes.append(the_junc.getGenes().get(0));
-					for (int i = 1; i < the_junc.getGenes().size(); ++i) {
-						genes.append(',');
-						genes.append(the_junc.getGenes().get(i));
+					if (args.getGtf_file() != null) {
+						StringBuffer genes = new StringBuffer();
+						genes.append(the_junc.getGenes().get(0));
+						for (int i = 1; i < the_junc.getGenes().size(); ++i) {
+							genes.append(',');
+							genes.append(the_junc.getGenes().get(i));
+						}
+						record.setName(genes.toString());
 					}
-					record.setName(genes.toString());
+					else {
+						record.setName("NoGene");
+					}
 					record.setStrand(the_junc.getStrand());
 					record.setThick_start(record.getStart());
 					record.setThick_end(record.getEnd());
@@ -826,6 +859,7 @@ public class FileRW {
 		int last_length = 0;
 		int filted = 0;
 		HandleReads handle = new HandleReads();
+		handle.setSeg_dev(args.getRead_dev());
 		for (SAMRecord samRecord : reader){
 			if (samRecord.getReadUnmappedFlag()) {
 				continue;
@@ -839,7 +873,7 @@ public class FileRW {
 				if (first_length + last_length - filted == 0) {
 					rrna_ids++;
 				}
-				handle.filtPCC(first_reads, first_length, out, last_reads, last_length, ip_flag, itree, args.getCirc_length(), r, args.isPair_mode(), args.getCirc_bed() == null, args.isUniq_mode());
+				handle.filtPCC(args, first_reads, first_length, out, last_reads, last_length, ip_flag, itree, r);
 				first_length = 0;
 				last_length = 0;
 				filted = 0;
@@ -865,13 +899,12 @@ public class FileRW {
 //			if (thisreadid.equals(debugString)) {
 //				System.out.println("Debug");
 //			}
-
 			
 		}
 		if (first_length + last_length - filted == 0) {
 			rrna_ids++;
 		}
-		handle.filtPCC(first_reads, first_length, out, last_reads, last_length, ip_flag, itree, args.getCirc_length(), r, args.isPair_mode(), args.getCirc_bed() == null, args.isUniq_mode());
+		handle.filtPCC(args, first_reads, first_length, out, last_reads, last_length, ip_flag, itree, r);
 		System.out.println("Total Mapped reads: " + map_ids);
 		System.out.println("Other chromosomes or rRNA reads get filted: " + rrna_ids);
 		return alignments;
@@ -976,7 +1009,7 @@ public class FileRW {
 				}
 				if (!thisreadid.equals(lastreadid)) {
 					lastreadid = thisreadid;
-					handle.filtPCC(first_reads, first_length, out, last_reads, last_length, true, itree, args.getCirc_length(), r, args.isPair_mode(), args.getCirc_bed() == null, args.isUniq_mode());
+					handle.filtPCC(args, first_reads, first_length, out, last_reads, last_length, true, itree, r);
 					first_length = 0;
 					last_length = 0;
 				}
@@ -989,7 +1022,7 @@ public class FileRW {
 					last_length++;
 				}
 			}
-			handle.filtPCC(first_reads, first_length, out, last_reads, last_length, true, itree, args.getCirc_length(), r, args.isPair_mode(), args.getCirc_bed() == null, args.isUniq_mode());
+			handle.filtPCC(args, first_reads, first_length, out, last_reads, last_length, true, itree, r);
 			reader.close();
 		}
 		catch(IOException e){
@@ -1007,14 +1040,14 @@ public class FileRW {
 		return out;
 	}
 	
-	private static double calP_ValueBack(FisherTest fisher_test, int back, int chr, int start, int end, IntervalTree<ReadInfo> itree, IntervalTree<ReadInfo> itree_input, boolean dev_flag, boolean linear_flag){
+	private static double calP_ValueBack(FisherTest fisher_test, int back, int chr, int start, int end, IntervalTree<ReadInfo> itree, IntervalTree<ReadInfo> itree_input, JuncInfo junc, boolean linear_flag){
 		double p_value = 1.0;
 		int ip_read = 0;
 		int input_read = 0;
 		Iterator<Node<ReadInfo>> nodes = itree.overlappers(start, end);
 		while (nodes.hasNext()){
 			Node<ReadInfo> node = nodes.next();
-			if (!dev_flag || (node.getStart() >= start - halfDev && node.getEnd() <= end + halfDev)){
+			if (junc == null || (node.getStart() >= junc.getSP() - halfDev && node.getEnd() <= junc.getEP() + halfDev)){
 				if (linear_flag){
 					ip_read += node.getValue().getLinear();
 				}
@@ -1026,7 +1059,7 @@ public class FileRW {
 		nodes = itree_input.overlappers(start, end);
 		while (nodes.hasNext()){
 			Node<ReadInfo> node = nodes.next();
-			if (!dev_flag || (node.getStart() >= start - halfDev && node.getEnd() <= end + halfDev)){
+			if (junc == null || (node.getStart() >= junc.getSP() - halfDev && node.getEnd() <= junc.getEP() + halfDev)){
 				if (linear_flag){
 					input_read += node.getValue().getLinear();
 				}
@@ -1067,6 +1100,123 @@ public class FileRW {
 			p_value = fisher_test.calpValue(ip_read, input_read, ip_back - ip_read, input_back - input_read, 2);
 		}
 		return p_value;
+	}
+	
+	private static ArrayList<Double> calP_ValueBack(FisherTest fisher_test, int back, int chr, int start, int end, int window_size, IntervalTree<ReadInfo> itree, IntervalTree<ReadInfo> itree_input, JuncInfo junc, boolean linear_flag){
+		ArrayList<Double> out = new ArrayList<>();
+		for (int i = start; i <= end; i+=window_size) {
+			double p_value = 1.0;
+			int ip_read = 0;
+			int input_read = 0;
+//			if (i == 78538625) {
+//				System.out.println("Debug");
+//			}
+			Iterator<Node<ReadInfo>> nodes = itree.overlappers(i, i + window_size - 1);
+			while (nodes.hasNext()){
+				Node<ReadInfo> node = nodes.next();
+				if (junc == null || (node.getStart() >= junc.getSP() - halfDev && node.getEnd() <= junc.getEP() + halfDev)){
+					if (linear_flag){
+						ip_read += node.getValue().getLinear();
+					}
+					else {
+						ip_read += node.getValue().getNo_xa();
+					}
+				}
+			}
+			nodes = itree_input.overlappers(i, i + window_size - 1);
+			while (nodes.hasNext()){
+				Node<ReadInfo> node = nodes.next();
+				if (junc == null || (node.getStart() >= junc.getSP() - halfDev && node.getEnd() <= junc.getEP() + halfDev)){
+					if (linear_flag){
+						input_read += node.getValue().getLinear();
+					}
+					else {
+						input_read += node.getValue().getNo_xa();
+					}
+				}
+			}
+			if (back == 0) {
+				p_value = fisher_test.calpValue(ip_read, input_read, ip_reads - ip_read, input_reads - input_read, 2);
+			}
+			else if (back < 0) {
+				p_value = fisher_test.calpValue(ip_read, input_read, ip_chr_reads[chr] - ip_read, input_chr_reads[chr] - input_read, 2);
+			}
+			else {
+				int ip_back = 0;
+				int input_back = 0;
+				nodes = itree.overlappers(i - back / 2, i + window_size - 1 + back / 2);
+				while(nodes.hasNext()) {
+					Node<ReadInfo> node = nodes.next();
+					if (linear_flag){
+						ip_back += node.getValue().getLinear();
+					}
+					else {
+						ip_back += node.getValue().getNo_xa();
+					}
+				}
+				nodes = itree_input.overlappers(i - back / 2, i + window_size - 1 + back / 2);
+				while(nodes.hasNext()) {
+					Node<ReadInfo> node = nodes.next();
+					if (linear_flag){
+						input_back += node.getValue().getLinear();
+					}
+					else {
+						input_back += node.getValue().getNo_xa();
+					}
+				}
+				p_value = fisher_test.calpValue(ip_read, input_read, ip_back - ip_read, input_back - input_read, 2);
+			}
+			out.add(p_value);
+		}
+		return out;
+	}
+	
+	private static ArrayList<Double> adjustP_Value(ArrayList<Double> p_value, String method){
+		ArrayList<Double> out = new ArrayList<>();
+		if (method == null) {
+			out = p_value;
+		}
+		else if ("bon".equals(method)) {
+			double n = (double) p_value.size();
+			for (int i = 0; i < p_value.size() ; ++i) {
+				out.add(p_value.get(i) * n);
+			}
+			p_value.clear();
+		}
+		else if ("bh".equals(method)) {
+			HashMap<Double, ArrayList<Integer>> map = new HashMap<>();
+			for (int i = 0; i < p_value.size() ; ++i) {
+				out.add(0.0);
+				ArrayList<Integer> ids = null;
+				if (map.containsKey(p_value.get(i))) {
+					ids = map.get(p_value.get(i));
+				}
+				else {
+					ids = new ArrayList<>();
+					map.put(p_value.get(i), ids);
+				}
+				ids.add(i);
+			}
+			Collections.sort(p_value);
+			double value = Double.MAX_VALUE;
+			double no_repeat = Double.MIN_VALUE;
+			for (int i = p_value.size(); i > 0 ; --i) {
+				if (no_repeat != p_value.get(i - 1)) {
+					value = Math.min(value, p_value.get(i - 1) * (double) p_value.size() / (double) i);
+					ArrayList<Integer> ids = map.get(p_value.get(i - 1));
+					for (int j = 0; j < ids.size(); ++j) {
+						out.set(ids.get(j), value);
+					}
+					no_repeat = p_value.get(i - 1);
+				}
+			}
+			p_value.clear();
+		}
+		else {
+			System.out.println("Warning: unkown method of adjusting p-value, adjusting is disabled");
+			out = p_value;
+		}
+		return out;
 	}
 	
 	/**
@@ -1117,17 +1267,18 @@ public class FileRW {
 			ArrayList<String> circ_high = new ArrayList<>();
 			ArrayList<String> circ_mid = new ArrayList<>();
 			ArrayList<String> circ_low = new ArrayList<>();
+			
 			for (Entry<String, JuncInfo> entry : juncs.get(chr).entrySet()) {
 				int start = entry.getValue().getSP();
 				int end = entry.getValue().getEP();
 				int max_window = (end - start) / window_size + 1;
-				double p_mean = 0.0;
+				ArrayList<Double> p_values = new ArrayList<>();
 				int start_windows = 0;
 				int end_windows = 0;
 				for (int i = 0; i <= max_window; ++i){
-					double p_value = calP_ValueBack(fisher_test, args.getBackground_size(), chr, start + window_size * i, start + window_size * (i + 1) - 1, itree.get(chr), itree_input.get(chr), true, false);
+					double p_value = calP_ValueBack(fisher_test, args.getBackground_size(), chr, start + window_size * i, start + window_size * (i + 1) - 1, itree.get(chr), itree_input.get(chr), entry.getValue(), false);
 					if (p_value < p_threshold) {
-						p_mean += p_value;
+						p_values.add(p_value);
 						++start_windows;
 					}
 					else {
@@ -1138,16 +1289,36 @@ public class FileRW {
 					continue;
 				}
 				for (int i = 0; i <= max_window; ++i){
-					double p_value = calP_ValueBack(fisher_test, args.getBackground_size(), chr, end - window_size * (i + 1) + 1, end - window_size * i, itree.get(chr), itree_input.get(chr), true, false);
+					double p_value = calP_ValueBack(fisher_test, args.getBackground_size(), chr, end - window_size * (i + 1) + 1, end - window_size * i, itree.get(chr), itree_input.get(chr), entry.getValue(), false);
 					if (p_value < p_threshold) {
-						p_mean += p_value;
+						p_values.add(p_value);
 						++end_windows;
 					}
 					else {
 						break;
 					}
 				}
-				if (start_windows + end_windows >= args.getPeak_length() / window_size && end_windows != 0){
+				p_values = adjustP_Value(p_values, args.getAdjsut_p());
+				double p_mean = 0.0;
+				for (int i = 0; i < start_windows; ++i) {
+					if (p_values.get(i) < p_threshold) {
+						p_mean += p_values.get(i);
+					}
+					else {
+						start_windows = i;
+						break;
+					}
+				}
+				for (int i = start_windows + end_windows - 1; i >= start_windows; --i) {
+					if (p_values.get(i) < p_threshold) {
+						p_mean += p_values.get(i);
+					}
+					else {
+						end_windows = start_windows + end_windows - 1 - i;
+						break;
+					}
+				}
+				if (start_windows + end_windows >= args.getPeak_length() / window_size && start_windows != 0 && end_windows != 0){
 					Bed12 record = new Bed12();
 					record.setChr(chr_symbol);
 					record.setStrand(entry.getValue().getStrand());
@@ -1160,10 +1331,10 @@ public class FileRW {
 						name.append(entry.getValue().getGenes().get(i));
 					}
 					name.append(':');
-					name.append(start);
+					name.append(start - 1);
 					name.append('-');
 					name.append(end);
-					record.setName(name.toString().toString());
+					record.setName(name.toString());
 					record.setStart(start);
 					record.setThick_start(start);
 					record.getBlock_starts().add(0);
@@ -1205,11 +1376,11 @@ public class FileRW {
 						}
 					}
 					record.getAdd_info().append('\t');
-					record.getAdd_info().append(Math.exp(Math.log(ip_read) + Math.log(input_reads) - Math.log(input_read) - Math.log(ip_reads)));
+					record.getAdd_info().append(Math.exp(Math.log(ip_read + 1) + Math.log(input_reads + 1) - Math.log(input_read + 1) - Math.log(ip_reads + 1)));
 					boolean strict = true;
-					double p_value = calP_ValueBack(fisher_test, args.getBackground_size(), chr, start - window_size, start - 1, itree.get(chr), itree_input.get(chr), false, false);
+					double p_value = calP_ValueBack(fisher_test, args.getBackground_size(), chr, start - window_size, start - 1, itree.get(chr), itree_input.get(chr), null, false);
 					strict &= p_value >= p_threshold;
-					p_value = calP_ValueBack(fisher_test, args.getBackground_size(), chr, end + 1, start + window_size, itree.get(chr), itree_input.get(chr), false, false);
+					p_value = calP_ValueBack(fisher_test, args.getBackground_size(), chr, end + 1, end + window_size, itree.get(chr), itree_input.get(chr), null, false);
 					strict &= p_value >= p_threshold;
 					if (strict){
 						record.getAdd_info().append("\tstrict");
@@ -1256,19 +1427,51 @@ public class FileRW {
 					}
 				}
 			}
+			fileAppend(circ_high_file, circ_high);
+			fileAppend(circ_mid_file, circ_mid);
+			fileAppend(circ_low_file, circ_low);
 			ArrayList<String> out_dev = new ArrayList<>();
-			for (int i = 0; i < chr_length; i += window_size) {
-				double p_value = calP_ValueBack(fisher_test, args.getBackground_size(), chr, i, i + window_size - 1, itree.get(chr), itree_input.get(chr), false, true);
+			ArrayList<Double> p_values = calP_ValueBack(fisher_test, args.getBackground_size(), chr, 1, chr_length, window_size, itree.get(chr), itree_input.get(chr), null, true);
+//			for (int i = 3141540; i < 3141560; ++i) {
+//				System.out.printf("%d %.3f\n", i *25, p_values.get(i));
+//			}
+			p_values = adjustP_Value(p_values, args.getAdjsut_p());
+//			for (int i = 3141540; i < 3141560; ++i) {
+//				System.out.printf("%d %.3f\n", i *25, p_values.get(i));
+//			}
+//			for (int i = 0; i < chr_length; i += window_size) {
+//				double p_value = calP_ValueBack(fisher_test, args.getBackground_size(), chr, i, i + window_size - 1, itree.get(chr), itree_input.get(chr), null, true);
+//				if (p_value < p_threshold) {
+//					total_p_value += p_value;
+//					if (!last_p) {
+//						seg_start = i / window_size;
+//					}
+//					last_p = true;
+//					seg_end = i / window_size;
+//				}
+//				else {
+//					double ava = total_p_value / (seg_end - seg_start +1);
+//					if (last_p) {
+//						peak_tree.put(seg_start, seg_end, ava);
+//						out_dev.add(chr_symbol + "\t" + (seg_start * window_size) + "\t" + (seg_end * window_size + window_size));
+//					}
+//					last_p = false;
+//					total_p_value = 0.0;
+//				}
+//			}
+			
+			for (int i = 0; i < p_values.size(); ++i) {
+				double p_value = p_values.get(i);
 				if (p_value < p_threshold) {
 					total_p_value += p_value;
 					if (!last_p) {
-						seg_start = i / window_size;
+						seg_start = i;
 					}
 					last_p = true;
-					seg_end = i / window_size;
+					seg_end = i;
 				}
 				else {
-					double ava = total_p_value / (seg_end - seg_start +1);
+					double ava = total_p_value / (seg_end - seg_start + 1);
 					if (last_p) {
 						peak_tree.put(seg_start, seg_end, ava);
 						out_dev.add(chr_symbol + "\t" + (seg_start * window_size) + "\t" + (seg_end * window_size + window_size));
@@ -1277,9 +1480,10 @@ public class FileRW {
 					total_p_value = 0.0;
 				}
 			}
-			fileAppend(circ_high_file, circ_high);
-			fileAppend(circ_mid_file, circ_mid);
-			fileAppend(circ_low_file, circ_low);
+			if (last_p) {
+				peak_tree.put(seg_start, seg_end, total_p_value / (seg_end - seg_start + 1));
+				out_dev.add(chr_symbol + "\t" + (seg_start * window_size) + "\t" + (seg_end * window_size + window_size));
+			}
 			fileAppend(peak_file, out_put);
 			if (args.isRetain_test()) {
 				fileAppend(peak_dev, out_dev);
@@ -1327,7 +1531,7 @@ public class FileRW {
 								}
 								else {
 									if (peak_length >= 4 && junc_record) {
-										record.setThick_start(record.getStart() * window_size);
+										record.setThick_start(record.getStart() * window_size + 1);
 										record.setThick_end(record.getEnd() * window_size);
 										for (int k = 0; k < key_index; ++k) {
 											String key = keys[k];
@@ -1335,13 +1539,23 @@ public class FileRW {
 												if (junc_peaks.get(key).getBlock_count() < record.getBlock_count()) {
 													junc_peaks.put(key, record);
 													record.getIds().add(scripts.get(i).getId());
+													if (record.getScript() == null || scripts.get(i).getEnd() - scripts.get(i).getStart() > record.getScript().getEnd() - record.getScript().getStart()) {
+														record.setScript(scripts.get(i));
+													}
 												}
 												else if (junc_peaks.get(key).getBlock_count() == record.getBlock_count()) {
-													junc_peaks.get(key).getIds().add(scripts.get(i).getId());
+													Bed12 value = junc_peaks.get(key);
+													value.getIds().add(scripts.get(i).getId());
+													if (value.getScript() == null || scripts.get(i).getEnd() - scripts.get(i).getStart() > value.getScript().getEnd() - value.getScript().getStart()) {
+														value.setScript(scripts.get(i));
+													}
 												}
 											}
 											else {
 												record.getIds().add(scripts.get(i).getId());
+												if (record.getScript() == null || scripts.get(i).getEnd() - scripts.get(i).getStart() > record.getScript().getEnd() - record.getScript().getStart()) {
+													record.setScript(scripts.get(i));
+												}
 												junc_peaks.put(key, record);
 											}
 										}
@@ -1375,7 +1589,7 @@ public class FileRW {
 							}
 						}
 						if (peak_length >= 4 && junc_record) {
-							record.setThick_start(record.getStart() * window_size);
+							record.setThick_start(record.getStart() * window_size + 1);
 							record.setThick_end(record.getEnd() * window_size);
 							for (int k = 0; k < key_index; ++k) {
 								String key = keys[k];
@@ -1383,13 +1597,23 @@ public class FileRW {
 									if (junc_peaks.get(key).getBlock_count() < record.getBlock_count()) {
 										junc_peaks.put(key, record);
 										record.getIds().add(scripts.get(i).getId());
+										if (record.getScript() == null || scripts.get(i).getEnd() - scripts.get(i).getStart() > record.getScript().getEnd() - record.getScript().getStart()) {
+											record.setScript(scripts.get(i));
+										}
 									}
 									else if (junc_peaks.get(key).getBlock_count() == record.getBlock_count()) {
-										junc_peaks.get(key).getIds().add(scripts.get(i).getId());
+										Bed12 value = junc_peaks.get(key);
+										value.getIds().add(scripts.get(i).getId());
+										if (value.getScript() == null || scripts.get(i).getEnd() - scripts.get(i).getStart() > value.getScript().getEnd() - value.getScript().getStart()) {
+											value.setScript(scripts.get(i));
+										}
 									}
 								}
 								else {
 									record.getIds().add(scripts.get(i).getId());
+									if (record.getScript() == null || scripts.get(i).getEnd() - scripts.get(i).getStart() > record.getScript().getEnd() - record.getScript().getStart()) {
+										record.setScript(scripts.get(i));
+									}
 									junc_peaks.put(key, record);
 								}
 							}
@@ -1409,23 +1633,40 @@ public class FileRW {
 			itera = genes.get(chr).iterator();
 			while (itera.hasNext()) {
 				Node<ArrayList<Gene>> gene_node = itera.next();
-				Iterator<Node<Double>> nodes = peak_tree.overlappers(gene_node.getStart(), gene_node.getEnd());
+				Iterator<Node<Double>> nodes = peak_tree.overlappers(gene_node.getStart() / window_size, gene_node.getEnd() / window_size);
 				while(nodes.hasNext()) {
 					Node<Double> node = nodes.next();
-					int start = Math.max(gene_node.getStart(), node.getStart());
-					int end = Math.min(gene_node.getEnd(), node.getEnd());
-					if (end - start >= 3) {
+					int start = Math.max(gene_node.getStart(), node.getStart() * window_size + 1);
+					int end = Math.min(gene_node.getEnd(), node.getEnd() * window_size + window_size);
+					if (end - start  + 1>= args.getPeak_length()) {
 						Bed12 record = new Bed12();
 						record.setChr(chr_symbol);
 						record.setStrand(gene_node.getValue().get(0).getStrand());
-						record.setStart(start * window_size);
-						record.setEnd(end * window_size);
-						record.setName(gene_node.getValue().get(0).getGene_symbol() + ":");
-						record.setScore(node.getValue() / (end - start + 1));
-						record.setThick_start(node.getStart());
-						record.setThick_end(node.getEnd());
+						record.setStart(start);
+						record.setEnd(end);
+						StringBuffer name = new StringBuffer();
+						for (int i = 0; i < gene_node.getValue().size(); ++i) {
+							ArrayList<Transcript> scripts = gene_node.getValue().get(i).getTranscripts();
+							for (int j = 0; j < scripts.size(); ++j) {
+								Transcript script = scripts.get(j);
+								if (script.getEnd() >= end && script.getStart() <= start) { 
+									name.append(script.getId());
+									name.append(',');
+									if	(record.getScript() == null || script.getEnd() - script.getStart() > record.getScript().getEnd() - record.getScript().getStart()) {
+										record.setScript(script);
+									}
+								}
+							}
+						}
+						if (name.length() > 0) {
+							name.setLength(name.length() - 1);
+						}
+						record.setName(name.toString());
+						record.setScore(node.getValue());
+						record.setThick_start(record.getStart());
+						record.setThick_end(record.getEnd());
 						record.setBlock_count(1);
-						record.getBlock_sizes().add(record.getEnd() - record.getStart() + window_size);
+						record.getBlock_sizes().add(record.getEnd() - record.getStart() + 1);
 						record.getBlock_starts().add(0);
 						if (!drop_nodes.containsKey(node) || drop_nodes.get(node).getEnd() - drop_nodes.get(node).getStart() > end - start) {
 							drop_nodes.put(node, record);
@@ -1435,9 +1676,6 @@ public class FileRW {
 			}
 			for (Entry<Node<Double>, Bed12> entry : drop_nodes.entrySet()) {
 				Bed12 record = entry.getValue();
-				record.setEnd(record.getEnd() + window_size);
-				record.setName(record.getName() + ":" + record.getStart() + "-" + record.getEnd());
-				record.setThick_end(record.getEnd());
 				int start = record.getStart();
 				int end = record.getEnd();
 				int ip_read = 0;
@@ -1453,7 +1691,12 @@ public class FileRW {
 					input_read += node.getValue().getLinear();
 				}
 				record.getAdd_info().append('\t');
-				record.getAdd_info().append(Math.exp(Math.log(ip_read) + Math.log(input_reads) - Math.log(input_read) - Math.log(ip_reads)));
+				if (record.getScript() == null) {
+					record.getAdd_info().append("no_script");//Math.exp(Math.log(ip_read) + Math.log(input_reads) - Math.log(input_read) - Math.log(ip_reads)));
+				}
+				else {
+					record.getAdd_info().append(Math.exp(Math.log(ip_read + 1) + Math.log(input_reads + 1) - Math.log(input_read + 1) - Math.log(ip_reads + 1) - Math.log(record.getScript().getEnd() - record.getScript().getStart())));
+				}
 				Iterator<Node<JuncInfo>> nodes = circ_tree.overlappers(start, end);
 				if (nodes.hasNext()){
 					record.getAdd_info().append("\tshare");
@@ -1492,7 +1735,7 @@ public class FileRW {
 						shared |= nodes.hasNext();
 					}
 					record.getAdd_info().append('\t');
-					record.getAdd_info().append(Math.exp(Math.log(ip_read) + Math.log(input_reads) - Math.log(input_read) - Math.log(ip_reads)));
+					record.getAdd_info().append(Math.exp(Math.log(ip_read) + Math.log(input_reads) - Math.log(input_read) - Math.log(ip_reads) - Math.log(record.getScript().getEnd() - record.getScript().getStart())));
 					if (shared){
 						record.getAdd_info().append("\tshare");
 					}
@@ -1547,8 +1790,7 @@ public class FileRW {
 			int start = the_junc.getSP();
 			int end = the_junc.getEP();
 			int gene_length = 0;
-			ArrayList<Integer> exons = new ArrayList<>();
-			int[] intron = {-1, Integer.MAX_VALUE};
+			int temp = 0;
 			Iterator<Node<ArrayList<Gene>>> nodes = genes.overlappers(start, end);
 			while (nodes.hasNext()) {
 				Node<ArrayList<Gene>> node = nodes.next();
@@ -1559,20 +1801,12 @@ public class FileRW {
 					}
 					for(int i=0; i < node.getValue().size(); ++i) {
 						the_junc.addGene(node.getValue().get(i).getGene_symbol());
-						int[] introns = {-1, Integer.MAX_VALUE};
-						ArrayList<Integer> temp = node.getValue().get(i).scriptExons(the_junc, halfDev, introns);
-						if (temp.size() > exons.size()) {
-							exons = temp;
-							intron[0] = introns[0];
-							intron[1] = introns[1];
-						}
+						temp = node.getValue().get(i).scriptExons(the_junc, halfDev, temp);
 					}
 					replace.put(entry.getKey(), the_junc);
 				}
 			}
-			the_junc.setIntron_flag(exons.size() == 0);
-			the_junc.setExons(exons);
-			the_junc.setIntron(intron);
+			the_junc.setStrand();
 		}
 		return replace;
 	}
@@ -1702,6 +1936,7 @@ public class FileRW {
 						}
 					}
 				}
+				junc = null;
 			}
 		}
 	}

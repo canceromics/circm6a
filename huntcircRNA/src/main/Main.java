@@ -70,13 +70,13 @@ public class Main {
 			//  filt junctions within gene and fix their site to exon bound if possible
 			ArrayList<IntervalTree<ArrayList<Gene>>> genes = new ArrayList<>();
 			FileRW.loadGenes(in_args, juncTable, genes);
-			FileRW.countReadsExon(juncTable, itree, itree_input);
 			// filt paired clipping signal such as GT-AG
 			FileRW.filtGTAG(in_args.getGenome_file(), juncTable, chr_lengths);
+			FileRW.countReadsExon(juncTable, itree, itree_input);
 			// transform junctions to strings for output
 			FileRW.printNow("Calculate p-value at");
 			ArrayList<String> outList = null;
-			outList = FileRW.juncsToBed(juncTable);
+			outList = FileRW.juncsToBed(juncTable, in_args);
 			System.out.println("Number of BSJ: " + (outList.size() - 1));
 			FileRW.fileWrite(in_args.getOut_prefix() + "_circ.bed", outList);
 			// writing details of these junctions

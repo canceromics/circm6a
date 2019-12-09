@@ -10,11 +10,13 @@ public class InParam {
 	private String out_prefix=null;
 	private String rrna_bed=null;
 	private String circ_bed=null;
+	private String adjust_p=null;
 	private int sup_reads=2;
 	private int background_size=0;
 	private int window_size=25;
 	private int peak_length=100;
 	private int circ_length=100;
+	private int circ_max_length=200000;
 	private int read_dev=5;
 	private double p_value=0.05;
 	private boolean out_detail=false;
@@ -24,7 +26,7 @@ public class InParam {
 	private boolean help_flag=false;
 	
 	public InParam(String[] args) {
-		String[] to_read={"-ip", "-input", "-trim", "-g", "-r", "-o", "-rrna", "-circ", "-sup", "-back", "-window", "-peak", "-cl", "-dev", "-pt", "-detail", "-pair", "-uniq", "-test", "-h"};
+		String[] to_read={"-ip", "-input", "-trim", "-g", "-r", "-o", "-rrna", "-circ", "-adjust", "-sup", "-back", "-window", "-peak", "-cl", "-clmax", "-dev", "-pt", "-detail", "-unpair", "-uniq", "-test", "-h"};
 		for (int i = 0; i < args.length; ++i) {
 			if (args[i].charAt(0) == '-') {
 				if (args[i].equals(to_read[0])) {
@@ -82,13 +84,19 @@ public class InParam {
 				else if (args[i].equals(to_read[8])) {
 					++i;
 					if (i < args.length) {
+						this.adjust_p = args[i];
+					}
+				}
+				else if (args[i].equals(to_read[9])) {
+					++i;
+					if (i < args.length) {
 						this.sup_reads = Integer.parseInt(args[i]);
 						if (this.sup_reads < 0) {
 							this.sup_reads = - this.sup_reads;
 						}
 					}
 				}
-				else if (args[i].equals(to_read[9])) {
+				else if (args[i].equals(to_read[10])) {
 					++i;
 					if (i < args.length) {
 						this.background_size = Integer.parseInt(args[i]);
@@ -97,7 +105,7 @@ public class InParam {
 						}
 					}
 				}
-				else if (args[i].equals(to_read[10])) {
+				else if (args[i].equals(to_read[11])) {
 					++i;
 					if (i < args.length) {
 						this.window_size = Integer.parseInt(args[i]);
@@ -106,7 +114,7 @@ public class InParam {
 						}
 					}
 				}
-				else if (args[i].equals(to_read[11])) {
+				else if (args[i].equals(to_read[12])) {
 					++i;
 					if (i < args.length) {
 						this.peak_length = Integer.parseInt(args[i]);
@@ -115,7 +123,7 @@ public class InParam {
 						}
 					}
 				}
-				else if (args[i].equals(to_read[12])) {
+				else if (args[i].equals(to_read[13])) {
 					++i;
 					if (i < args.length) {
 						this.circ_length = Integer.parseInt(args[i]);
@@ -124,7 +132,16 @@ public class InParam {
 						}
 					}
 				}
-				else if (args[i].equals(to_read[13])) {
+				else if (args[i].equals(to_read[14])) {
+					++i;
+					if (i < args.length) {
+						this.circ_max_length = Integer.parseInt(args[i]);
+						if (this.circ_max_length < 0) {
+							this.circ_max_length = - this.circ_max_length;
+						}
+					}
+				}
+				else if (args[i].equals(to_read[15])) {
 					++i;
 					if (i < args.length) {
 						this.read_dev = Integer.parseInt(args[i]);
@@ -133,7 +150,7 @@ public class InParam {
 						}
 					}
 				}
-				else if (args[i].equals(to_read[14])) {
+				else if (args[i].equals(to_read[16])) {
 					++i;
 					if (i < args.length) {
 						this.p_value = Double.parseDouble(args[i]);
@@ -142,19 +159,19 @@ public class InParam {
 						}
 					}
 				}
-				else if (args[i].equals(to_read[15])) {
+				else if (args[i].equals(to_read[17])) {
 					this.out_detail = true;
 				}
-				else if (args[i].equals(to_read[16])) {
-					this.pair_mode = true;
-				}
-				else if (args[i].equals(to_read[17])) {
-					this.uniq_mode = true;
-				}
 				else if (args[i].equals(to_read[18])) {
-					this.retain_test = true;
+					this.pair_mode = false;
 				}
 				else if (args[i].equals(to_read[19])) {
+					this.uniq_mode = true;
+				}
+				else if (args[i].equals(to_read[20])) {
+					this.retain_test = true;
+				}
+				else if (args[i].equals(to_read[21])) {
 					this.help_flag = true;
 				}
 				else {
@@ -177,15 +194,17 @@ public class InParam {
 				"\t-o\tprefix of out files",
 				"\t-rrna\tenable rRNA remove (can specify a bed file)",
 				"\t-circ\tprovide circ bed file to call peak",
-				"\t-sup\tmin support number of a back junction (default is 1)",
+				"\t-adjust\tchoose method for p-value adjusting [bon|bh](bon means Bonferroni, bh means Benjamini and Hochberg)",
+				"\t-sup\tmin support number of a back junction (default is 2)",
 				"\t-back\tbackground size in peak calling (0 for whole genome, default is 0)",
 				"\t-window\twindow size in peak calling (default is 25)",
 				"\t-peak\tmin peak length in peak calling (default is 100)",
 				"\t-cl\tcutoff of distance bewteen junction points (default is 100)",
+				"\t-clmax\tupper bound cutoff of distance bewteen junction points (default is 200000)",
 				"\t-dev\tmax deviation permitted in searching back junctions (default is 5)",
 				"\t-pt\tthreshold for p-value in peak calling (default is 0.05)",
 				"\t-detail\toutput circ detail file",
-				"\t-pair\tenable pair end examination of back junction",
+				"\t-unpair\tunable pair end examination of back junction",
 				"\t-uniq\tenable using only uniq mapping reads",
 				"\t-h\tshow help text"
 		};
@@ -211,7 +230,7 @@ public class InParam {
 			out = false;
 		}
 		if (this.window_size == 0) {
-			this.LackParam(for_help[8]);
+			this.LackParam(for_help[11]);
 		}
 		return out;
 	}
@@ -296,4 +315,11 @@ public class InParam {
 		return circ_length;
 	}
 	
+	public int getCirc_max_length() {
+		return circ_max_length;
+	}
+
+	public String getAdjsut_p() {
+		return adjust_p;
+	}
 }

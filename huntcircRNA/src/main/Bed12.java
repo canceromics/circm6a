@@ -8,11 +8,12 @@ public class Bed12 {
 	private int end=0;
 	private String name=null;
 	private double score=0.0;
-	private char strand=' ';
+	private char strand='*';
 	private int thick_start=0;
 	private int thick_end=0;
 	private int item_rgb=0;
 	private int block_count=0;
+	private Transcript script=null;
 	private ArrayList<Integer> block_sizes=null;
 	private ArrayList<Integer> block_starts=null;
 	private ArrayList<String> ids=null;
@@ -101,6 +102,12 @@ public class Bed12 {
 	public void setBlock_count(int block_count) {
 		this.block_count = block_count;
 	}
+	public Transcript getScript() {
+		return script;
+	}
+	public void setScript(Transcript script) {
+		this.script = script;
+	}
 	public ArrayList<Integer> getBlock_sizes() {
 		return block_sizes;
 	}
@@ -154,7 +161,7 @@ public class Bed12 {
 		out.append('\t');
 		out.append(strand);
 		out.append('\t');
-		out.append(thick_start);
+		out.append(thick_start - 1);
 		out.append('\t');
 		out.append(thick_end);
 		out.append('\t');
@@ -172,6 +179,23 @@ public class Bed12 {
 		}
 		return out.toString();
 	}
+    public String toString(int k) {
+    	StringBuffer out = new StringBuffer();
+    	if (k==6) {
+			out.append(chr);
+			out.append('\t');
+			out.append(start - 1);
+			out.append('\t');
+			out.append(end);
+			out.append('\t');
+			out.append(name);
+			out.append('\t');
+			out.append(score);
+			out.append('\t');
+			out.append(strand);
+    	}
+		return out.toString();
+    }
 	public String blockSizesToString() {
 		return aListToString(this.block_sizes, "0", ",");
 	}

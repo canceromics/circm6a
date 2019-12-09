@@ -9,6 +9,7 @@ public class JuncInfo {
 	private HashSet<String> single_ip_ids=null;
 	private HashSet<String> single_input_ids=null;
 	private ArrayList<String> genes = new ArrayList<String>();
+	private Transcript script = null;
 	private ArrayList<Integer> exons= new ArrayList<>();
 	private int startPos=0;
 	private int endPos=0;
@@ -142,6 +143,14 @@ public class JuncInfo {
 		this.genes.add(gene);
 	}
 	
+	public Transcript getScript() {
+		return script;
+	}
+
+	public void setScript(Transcript script) {
+		this.script = script;
+	}
+
 	public ArrayList<Integer> getExons() {
 		return exons;
 	}
@@ -174,6 +183,12 @@ public class JuncInfo {
 		this.strand = strand;
 	}
 
+	public void setStrand() {
+		if (script != null && script.getGene() != null) {
+			strand = script.getGene().getStrand();
+		}
+	}
+	
 	public int getSingle_ip_reads() {
 		return single_ip_reads;
 	}
@@ -212,6 +227,26 @@ public class JuncInfo {
 
 	public void setFix_end_exon(boolean fix_end_exon) {
 		this.fix_end_exon = fix_end_exon;
+	}
+	
+	public void setExonIntron(int dev) {
+		intron = new int[]{-1, Integer.MAX_VALUE};
+		for (int j = 0; j < script.getExons().size(); ++j) {
+			ExonInfo exon = script.getExon(j);
+			int start = exon.getStart_position();
+			int end = exon.getEnd_position();
+			if (startPos <= end && endPos >= start) {
+				exons.add(start);
+				exons.add(end);
+			}
+			else if (startPos > end){
+				intron[0] = Math.max(intron[0], end + 1);
+			}
+			else {
+				intron[1] = Math.min(intron[1], start - 1);
+			}
+		}
+		intron_flag = exons.size() == 0;
 	}
 	
 }
