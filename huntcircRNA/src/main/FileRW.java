@@ -30,8 +30,8 @@ public class FileRW {
 	public static String[] GT_neg = {"CT","GT","CT"};
 	private static int ip_reads = 0; // no rrna reads in IP bam
 	private static int input_reads = 0; // no rrna reads in input bam
-	private static int[] ip_chr_reads = new int[25];
-	private static int[] input_chr_reads = new int[25];
+	private static HashMap<String, int[]> ip_chr_reads = new HashMap<>();
+	private static HashMap<String, int[]> input_chr_reads = new HashMap<>();
 	
 	/**
 	 * read bam file for back splicing junctions and put all reads filted into trees
@@ -40,14 +40,11 @@ public class FileRW {
 	 * @param itree_input the tree of input file (output);
 	 * @return a chr divided back splicing junctions
 	 */
-	public static ArrayList<HashMap<String,JuncInfo>> filtBam(InParam args, ArrayList<IntervalTree<ReadInfo>> itree, ArrayList<IntervalTree<ReadInfo>> itree_input){
-		ArrayList<HashMap<String,JuncInfo>> out = creatJuncTable();
+	public static void filtBam(HashMap<String, HashMap<String, JuncInfo>> out,InParam args, HashMap<String, IntervalTree<ReadInfo>> itree, HashMap<String, IntervalTree<ReadInfo>> itree_input){
 		String ip_file = args.getIp_file();
 		String input_file = args.getInput_file();
 		SamReader reader = null;
 		RemoverRNA r = new RemoverRNA(args.getRrna_bed()); // initial rRNA removing function
-		setToZero(ip_chr_reads); //initial reads count in ip chrs
-		setToZero(input_chr_reads); // initial reads count in input chrs
 		try {
 			if (ip_file !=null) {
 				File fi = new File(ip_file);
@@ -56,8 +53,8 @@ public class FileRW {
 				ip_reads = filtBam(reader, out, itree, true, args, r);
 				reader.close();
 				int juncs = 0;
-				for (int i = 0; i < out.size(); ++i) {
-					juncs += out.get(i).size();
+				for (Entry<String, HashMap<String, JuncInfo>> entry : out.entrySet()) {
+					juncs += entry.getValue().size();
 				}
 				System.out.println("Possible BSJ in IP bam: " + juncs);
 				System.out.println("IP_Reads: " + ip_reads);
@@ -84,16 +81,15 @@ public class FileRW {
 				}
 			}
 		}
-		return out;
 	}
 	
 	/**
 	 * use paired clipping signal (as GT-AG) in genome to filt junctions and fix their postion to the clipping position 
 	 * @param fileName the genome file path;
-	 * @param in junction to get filted and then return the filted result (output);
-	 * @param lengths chromosome lengths in the genome;
+	 * @param juncTable junction to get filted and then return the filted result (output);
+	 * @param chr_lengths chromosome lengths in the genome;
 	 */
-	public static void filtGTAG(String fileName, ArrayList<HashMap<String,JuncInfo>> in, ArrayList<Integer> lengths){
+	public static void filtGTAG(String fileName, HashMap<String, HashMap<String, JuncInfo>> juncTable, HashMap<String, Integer> chr_lengths){
 		if (fileName == null) {
 			System.out.println("No Genome File For GT-AG Signal");
 			return;
@@ -105,23 +101,24 @@ public class FileRW {
 			reader = new BufferedReader(new FileReader(fi));
 			String tempString = null;
 			StringBuffer bases = new StringBuffer();
-			int chrNum = 0;
 			String chr = null;
 			while ((tempString = reader.readLine()) != null){
 				if (tempString.charAt(0) == '>'){
 					if (bases.length() > 0) {
-						System.out.println("Possible BSJ:" + in.get(chrNum).size());
-						HashMap<String, JuncInfo> fix_junc = fixChrJunc(bases.toString(), in.get(chrNum));
-						in.set(chrNum, fix_junc);
-						if (lengths.size() >= 25) {
-							lengths.set(chrNum, bases.length());
+						if (juncTable.containsKey(chr)){
+							System.out.println("Possible BSJ:" + juncTable.get(chr).size());
+							HashMap<String, JuncInfo> fix_junc = fixChrJunc(bases.toString(), juncTable.get(chr));
+							juncTable.put(chr, fix_junc);
+							chr_lengths.put(chr, bases.length());
+							FileRW.printNow(chr + " filted BSJ: " + juncTable.get(chr).size() + " at");
 						}
-						FileRW.printNow(chr + " filted BSJ: " + in.get(chrNum).size() + " at");
+						else {
+							System.out.println("No BSJ in " + chr);
+						}
 					}
 					String[] temp_chr = tempString.split("\\s+");
 					chr = temp_chr[0].substring(1);
 					System.out.println("Searching " + chr);
-					chrNum = ExonInfo.chrSymbolToNum(chr);
 					bases.setLength(0);
 				}
 				else {
@@ -129,13 +126,16 @@ public class FileRW {
 				}
 			}
 			if (bases.length() > 0) {
-				System.out.println("Possible BSJ:" + in.get(chrNum).size());
-				HashMap<String, JuncInfo> fix_junc = fixChrJunc(bases.toString(), in.get(chrNum));
-				in.set(chrNum, fix_junc);
-				if (lengths.size() >= 25) {
-					lengths.set(chrNum, bases.length());
+				if (juncTable.containsKey(chr)){
+					System.out.println("Possible BSJ:" + juncTable.get(chr).size());
+					HashMap<String, JuncInfo> fix_junc = fixChrJunc(bases.toString(), juncTable.get(chr));
+					juncTable.put(chr, fix_junc);
+					chr_lengths.put(chr, bases.length());
+					FileRW.printNow(chr + " filted BSJ: " + juncTable.get(chr).size() + " at");
 				}
-				FileRW.printNow(chr + " filted BSJ: " + in.get(chrNum).size() + " at");
+				else {
+					System.out.println("No BSJ in " + chr);
+				}
 			}
 			reader.close();
 		}
@@ -156,15 +156,10 @@ public class FileRW {
 	/**
 	 * load genes and exons in gtf file and then use them to filt junctions
 	 * @param args command line parameters;
-	 * @param juncs junctions to get filted and then return the filted result (output);
+	 * @param juncTable junctions to get filted and then return the filted result (output);
 	 * @param genes stored gene tree when finish loading;
 	 */
-	public static void loadGenes(InParam args, ArrayList<HashMap<String,JuncInfo>> juncs, ArrayList<IntervalTree<ArrayList<Gene>>> genes){
-		for (int i = 0; i < 25; ++i) {
-			IntervalTree<ArrayList<Gene>> tree = new IntervalTree<>();
-			tree.setSentinel(null);
-			genes.add(tree);
-		}
+	public static void loadGenes(InParam args, HashMap<String, HashMap<String, JuncInfo>> juncTable, HashMap<String, IntervalTree<ArrayList<Gene>>> genes){
 		String temp_line = null;
 		Gene gene = null;
 		Transcript the_script = null;
@@ -187,61 +182,64 @@ public class FileRW {
 					int start = Integer.parseInt(cols[3]);
 					int end = Integer.parseInt(cols[4]);
 					char strand = cols[6].charAt(0);
-					int chr_array = ExonInfo.chrSymbolToNum(cols[0]);
-					if (chr_array >= 0 && chr_array < 25) {
-						exon = new ExonInfo();
-						exon.setChr_symbol(cols[0]);
-						exon.setRead_count(0);
-						exon.setStart_position(start);
-						exon.setEnd_position(end);
-						int index = temp_line.indexOf("transcript_id") + 15;
-						if (index < 15) {
+					String chr = cols[0];
+					exon = new ExonInfo();
+					exon.setChr_symbol(cols[0]);
+					exon.setRead_count(0);
+					exon.setStart_position(start);
+					exon.setEnd_position(end);
+					int index = temp_line.indexOf("transcript_id") + 15;
+					if (index < 15) {
+						exon_gtf.close();
+						return;
+					}
+					String transcript_id = temp_line.substring(index, temp_line.indexOf('"', index));
+					if (the_script != null && transcript_id.equals(the_script.getId())) {
+						the_script.addExon(exon);
+					}
+					else {
+						if (the_script != null) {
+							the_script.setEnd(exon_end);
+							the_script.sortExons(true);
+						}
+						index = temp_line.indexOf("gene_id") + 9;
+						if (index < 9) {
 							exon_gtf.close();
 							return;
 						}
-						String transcript_id = temp_line.substring(index, temp_line.indexOf('"', index));
-						if (the_script != null && transcript_id.equals(the_script.getId())) {
-							the_script.addExon(exon);
-						}
-						else {
-							if (the_script != null) {
-								the_script.setEnd(exon_end);
-								the_script.sortExons(true);
-							}
-							index = temp_line.indexOf("gene_id") + 9;
-							if (index < 9) {
-								exon_gtf.close();
-								return;
-							}
-							String gene_id = temp_line.substring(index, temp_line.indexOf('"', index));
-							if (gene == null || !gene_id.equals(gene.getGene_id())) {
-								if (gene != null) {
-									gene.setEnd(exon_end);
-									IntervalTree<ArrayList<Gene>> gene_tree = genes.get(chr_array);
-									ArrayList<Gene> old = gene_tree.put(gene.getStart(), gene.getEnd(), null);
-									ArrayList<Gene> value = old;
-									if (value == null) {
-										value = new ArrayList<>();
-									}
-									value.add(gene);
-									gene_tree.put(start, end, value);
+						String gene_id = temp_line.substring(index, temp_line.indexOf('"', index));
+						if (gene == null || !gene_id.equals(gene.getGene_id())) {
+							if (gene != null) {
+								gene.setEnd(exon_end);
+								if (!genes.containsKey(chr)){
+									IntervalTree<ArrayList<Gene>> temp_T = new IntervalTree<>();
+									temp_T.setSentinel(null);
+									genes.put(chr, temp_T);
 								}
-								gene = new Gene();
-								gene.setStart(start);
-								gene.setGene_id(gene_id);
-								gene.setGene_symbol(gene_id);
-								if ((index = temp_line.indexOf("gene_name") + 11) != 10) {
-									gene.setGene_symbol(temp_line.substring(index, temp_line.indexOf('"', index)));
+								IntervalTree<ArrayList<Gene>> gene_tree = genes.get(chr);
+								ArrayList<Gene> old = gene_tree.put(gene.getStart(), gene.getEnd(), null);
+								ArrayList<Gene> value = old;
+								if (value == null) {
+									value = new ArrayList<>();
 								}
-								gene.setStrand(strand);
+								value.add(gene);
+								gene_tree.put(start, end, value);
 							}
-							the_script = new Transcript(gene, transcript_id, new ArrayList<ExonInfo>(), start, 0, strand, 0, false);
-							gene.getTranscripts().add(the_script);
-							exon_end = 0;
+							gene = new Gene();
+							gene.setStart(start);
+							gene.setGene_id(gene_id);
+							gene.setGene_symbol(gene_id);
+							if ((index = temp_line.indexOf("gene_name") + 11) != 10) {
+								gene.setGene_symbol(temp_line.substring(index, temp_line.indexOf('"', index)));
+							}
+							gene.setStrand(strand);
 						}
-						if (exon_end < end) {
-							exon_end = end;
-						}
+						the_script = new Transcript(gene, transcript_id, new ArrayList<ExonInfo>(), start, 0, strand, 0, false);
+						gene.getTranscripts().add(the_script);
+						exon_end = 0;
+					}
+					if (exon_end < end) {
+						exon_end = end;
 					}
 				}
 				else if(cols[2].equals("transcript")) {
@@ -275,24 +273,27 @@ public class FileRW {
 					gene.setStart(start);
 					gene.setEnd(end);
 					gene.setStrand(cols[6].charAt(0));
-					int chr_array = ExonInfo.chrSymbolToNum(cols[0]);
-					if (chr_array >= 0 && chr_array < 25) {
-						IntervalTree<ArrayList<Gene>> gene_tree = genes.get(chr_array);
-						ArrayList<Gene> old = gene_tree.put(start, end, null);
-						ArrayList<Gene> value = old;
-						if (value == null) {
-							value = new ArrayList<>();
-						}
-						value.add(gene);
-						gene_tree.put(start, end, value);
+					String chr = cols[0];
+					if (!genes.containsKey(chr)){
+						IntervalTree<ArrayList<Gene>> temp_T = new IntervalTree<>();
+						temp_T.setSentinel(null);
+						genes.put(chr, temp_T);
 					}
+					IntervalTree<ArrayList<Gene>> gene_tree = genes.get(chr);
+					ArrayList<Gene> old = gene_tree.put(start, end, null);
+					ArrayList<Gene> value = old;
+					if (value == null) {
+						value = new ArrayList<>();
+					}
+					value.add(gene);
+					gene_tree.put(start, end, value);
 				}
 			}
 			exon_gtf.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		filtJuncTable(juncs, genes);
+		filtJuncTable(juncTable, genes);
 		return;
 	}
 	
@@ -301,9 +302,7 @@ public class FileRW {
 	 * @param bed_file bed file path;
 	 * @return a list of junctions that stored in chromosomes;
 	 */
-	public static ArrayList<HashMap<String,JuncInfo>> readJuncs(String bed_file){
-		ArrayList<HashMap<String,JuncInfo>> out = new ArrayList<>();
-		out = creatJuncTable();
+	public static void readJuncs(String bed_file, HashMap<String, HashMap<String,JuncInfo>> out) {
 		File fi = new File(bed_file);
 		BufferedReader reader = null;
 		try {
@@ -311,18 +310,18 @@ public class FileRW {
 			String line = null;
 			while ((line = reader.readLine()) != null) {
 				String[] cols = line.split("\t");
-				int chr_num = ExonInfo.chrSymbolToNum(cols[0]);
-				if (chr_num >= 0 && chr_num < 25) {
-					HashMap<String, JuncInfo> juncs = out.get(chr_num);
-					int start = Integer.parseInt(cols[1]) + 1;
-					int end = Integer.parseInt(cols[2]);
-					String key = cols[1] + "\t" + cols[2];
-					if (!juncs.containsKey(key)) {
-						JuncInfo junc = new JuncInfo(start, end);
-						juncs.put(key, junc);
-						if (cols[5].length() == 1) {
-							junc.setStrand(cols[5].charAt(0));
-						}
+				if (!out.containsKey(cols[0])){
+					out.put(cols[0], new HashMap<>());
+				}
+				HashMap<String, JuncInfo> juncs = out.get(cols[0]);
+				int start = Integer.parseInt(cols[1]) + 1;
+				int end = Integer.parseInt(cols[2]);
+				String key = cols[1] + "\t" + cols[2];
+				if (!juncs.containsKey(key)) {
+					JuncInfo junc = new JuncInfo(start, end);
+					juncs.put(key, junc);
+					if (cols[5].length() == 1) {
+						junc.setStrand(cols[5].charAt(0));
 					}
 				}
 			}
@@ -337,7 +336,6 @@ public class FileRW {
 				}
 			}
 		}
-		return out;
 	}
 	
 	/**
@@ -464,25 +462,25 @@ public class FileRW {
 	
 	/**
 	 * counting single end support reads to junctions 
-	 * @param juncs the junctions divided into chromosomes;
+	 * @param juncTable the junctions divided into chromosomes;
 	 * @param itree the tree of reads attached to the ip file;
 	 * @param itree_input the tree of reads attached to the input file;
 	 */
-	public static void countReadsExon(ArrayList<HashMap<String,JuncInfo>> juncs, ArrayList<IntervalTree<ReadInfo>> itree, ArrayList<IntervalTree<ReadInfo>> itree_input) {
+	public static void countReadsExon(HashMap<String, HashMap<String, JuncInfo>> juncTable, HashMap<String, IntervalTree<ReadInfo>> itree, HashMap<String, IntervalTree<ReadInfo>> itree_input) {
 		
-		countSamfile(itree, juncs, true);
-		countSamfile(itree_input, juncs, false);
+		countSamfile(itree, juncTable, true);
+		countSamfile(itree_input, juncTable, false);
 		
 	}
 	
 	/**
 	 * arrange the junctions into a list of string for detailed output
 	 * @param args command line parameters;
-	 * @param in the junctions needs to be transformed into string;
+	 * @param juncTable the junctions needs to be transformed into string;
 	 * @return a string list waiting to be put out;
 	 */
 
-	public static ArrayList<String> juncsToArray(InParam args, ArrayList<HashMap<String,JuncInfo>> in, ArrayList<IntervalTree<ReadInfo>> itree, ArrayList<IntervalTree<ReadInfo>> itree_input){
+	public static ArrayList<String> juncsToArray(InParam args, HashMap<String, HashMap<String, JuncInfo>> juncTable, HashMap<String, IntervalTree<ReadInfo>> itree, HashMap<String, IntervalTree<ReadInfo>> itree_input){
 		ArrayList<String> out = new ArrayList<String>();
 		ArrayList<String> out_list = new ArrayList<String>();
 		boolean ip_flag = args.getInput_file() != null;
@@ -528,16 +526,19 @@ public class FileRW {
 		}
 		theJuncLine.append("\tCircRatio");
 		out.add(theJuncLine.toString());
-		for (int i=0; i < in.size(); ++i) {
-			for (Entry<String, JuncInfo> entry : in.get(i).entrySet()) {
+		ArrayList<String> chrs = new ArrayList<>();
+		chrs.addAll(juncTable.keySet());
+		Collections.sort(chrs);
+		for (int i = 0; i < chrs.size(); ++i) {
+			String chr = chrs.get(i);
+			for (Entry<String, JuncInfo> entry : juncTable.get(chr).entrySet()) {
 				JuncInfo this_junc = entry.getValue();
 				this_junc.setExonIntron(args.getRead_dev());
 				ArrayList<String> ids = this_junc.getReadID();
 				ArrayList<String> inputids = this_junc.getInputids();
 				if (ids.size() + inputids.size() >= sup_read) {
 					theJuncLine.setLength(0);
-					String chrSym = ExonInfo.chrNumToSymbol(i);
-					theJuncLine.append(chrSym);
+					theJuncLine.append(chr);
 					theJuncLine.append('\t');
 					theJuncLine.append(this_junc.getSP() - 1);
 					theJuncLine.append('\t');
@@ -615,22 +616,22 @@ public class FileRW {
 					}
 					int ip_linear = 0;
 					int input_linear = 0;
-					Iterator<Node<ReadInfo>> nodes = itree.get(i).overlappers(this_junc.getSP() - halfDev, this_junc.getSP() + halfDev);
+					Iterator<Node<ReadInfo>> nodes = itree.get(chr).overlappers(this_junc.getSP() - halfDev, this_junc.getSP() + halfDev);
 					while (nodes.hasNext()){
 						Node<ReadInfo> node = nodes.next();
 						ip_linear += node.getValue().getNo_xa() - node.getValue().getCirc_front() - node.getValue().getFront();
 					}
-					nodes = itree.get(i).overlappers(this_junc.getEP() - halfDev, this_junc.getEP() + halfDev);
+					nodes = itree.get(chr).overlappers(this_junc.getEP() - halfDev, this_junc.getEP() + halfDev);
 					while (nodes.hasNext()){
 						Node<ReadInfo> node = nodes.next();
 						ip_linear += node.getValue().getNo_xa() - node.getValue().getCirc_behind() - node.getValue().getBehind();
 					}
-					nodes = itree_input.get(i).overlappers(this_junc.getSP() - halfDev, this_junc.getSP() + halfDev);
+					nodes = itree_input.get(chr).overlappers(this_junc.getSP() - halfDev, this_junc.getSP() + halfDev);
 					while (nodes.hasNext()){
 						Node<ReadInfo> node = nodes.next();
 						input_linear += node.getValue().getNo_xa() - node.getValue().getCirc_front() - node.getValue().getFront();
 					}
-					nodes = itree_input.get(i).overlappers(this_junc.getEP() - halfDev, this_junc.getEP() + halfDev);
+					nodes = itree_input.get(chr).overlappers(this_junc.getEP() - halfDev, this_junc.getEP() + halfDev);
 					while (nodes.hasNext()){
 						Node<ReadInfo> node = nodes.next();
 						input_linear += node.getValue().getNo_xa() - node.getValue().getCirc_behind() - node.getValue().getBehind();
@@ -641,7 +642,7 @@ public class FileRW {
 					out.add(theJuncLine.toString());
 					if (!this_junc.isIntron_flag()){
 						StringBuffer intron_line = new StringBuffer();
-						intron_line.append(chrSym);
+						intron_line.append(chr);
 						intron_line.append('\t');
 						if (this_junc.getIntron()[0] != -1) {
 							intron_line.append(this_junc.getIntron()[0] - 1);
@@ -652,7 +653,7 @@ public class FileRW {
 						intron_line.append('\t');
 						intron_line.append(this_junc.getExons().get(0) - 1);
 						intron_line.append('\t');
-						intron_line.append(chrSym);
+						intron_line.append(chr);
 						intron_line.append('_');
 						intron_line.append(this_junc.getSP() - 1);
 						intron_line.append('_');
@@ -668,7 +669,7 @@ public class FileRW {
 						intron_line.append(this_junc.getStrand());
 						out_list.add(intron_line.toString());
 						intron_line.setLength(0);
-						intron_line.append(chrSym);
+						intron_line.append(chr);
 						intron_line.append('\t');
 						intron_line.append(this_junc.getExons().get(this_junc.getExons().size() - 1));
 						intron_line.append('\t');
@@ -679,7 +680,7 @@ public class FileRW {
 							intron_line.append(this_junc.getExons().get(this_junc.getExons().size() - 1) + 5000);
 						}
 						intron_line.append('\t');
-						intron_line.append(chrSym);
+						intron_line.append(chr);
 						intron_line.append('_');
 						intron_line.append(this_junc.getSP() - 1);
 						intron_line.append('_');
@@ -698,21 +699,26 @@ public class FileRW {
 				}
 			}
 		}
-		FileRW.fileWrite(args.getOut_prefix() + "_circ_intron.bed", out_list);
+		if (args.isRetain_test()){
+			FileRW.fileWrite(args.getOut_prefix() + "_circ_intron.bed", out_list);
+		}
 		return out;
 	}
 	
 	/**
 	 * transform junctions in Bed12 format
-	 * @param in junctions with key of start and end split by chromosomes
+	 * @param juncTable junctions with key of start and end split by chromosomes
 	 * @return a list of string include head to be put out
 	 */
-	public static ArrayList<String> juncsToBed(ArrayList<HashMap<String,JuncInfo>> in, InParam args){
+	public static ArrayList<String> juncsToBed(HashMap<String, HashMap<String, JuncInfo>> juncTable, InParam args){
 		ArrayList<String> out = new ArrayList<String>();
 		out.add(Bed12.getHeader());
-		for (int chr=0; chr < in.size(); chr++) {
-			String chr_symbol = ExonInfo.chrNumToSymbol(chr);
-			for (Iterator<Entry<String, JuncInfo>> it = in.get(chr).entrySet().iterator(); it.hasNext();) {
+		ArrayList<String> chrs = new ArrayList<>();
+		chrs.addAll(juncTable.keySet());
+		Collections.sort(chrs);
+		for (int i = 0; i < chrs.size(); i++) {
+			String chr = chrs.get(i);
+			for (Iterator<Entry<String, JuncInfo>> it = juncTable.get(chr).entrySet().iterator(); it.hasNext();) {
 				Entry<String, JuncInfo> entry = it.next();
 				JuncInfo the_junc = entry.getValue();
 				if (the_junc.getTR() < the_junc.getReadID().size() || the_junc.getInputReads() < the_junc.getInputids().size()) {
@@ -725,15 +731,15 @@ public class FileRW {
 					record.setBlock_count(1);
 					record.getBlock_sizes().add(the_junc.getEP() - the_junc.getSP());
 					record.getBlock_starts().add(0);
-					record.setChr(chr_symbol);
+					record.setChr(chr);
 					record.setStart(the_junc.getSP());
 					record.setEnd(the_junc.getEP());
 					if (args.getGtf_file() != null) {
 						StringBuffer genes = new StringBuffer();
 						genes.append(the_junc.getGenes().get(0));
-						for (int i = 1; i < the_junc.getGenes().size(); ++i) {
+						for (int j = 1; j < the_junc.getGenes().size(); ++j) {
 							genes.append(',');
-							genes.append(the_junc.getGenes().get(i));
+							genes.append(the_junc.getGenes().get(j));
 						}
 						record.setName(genes.toString());
 					}
@@ -844,7 +850,7 @@ public class FileRW {
 	 * @param r removing rRNA
 	 * @return alignments count
 	 */
-	private static int filtBam(SamReader reader, ArrayList<HashMap<String,JuncInfo>> out, ArrayList<IntervalTree<ReadInfo>> itree, boolean ip_flag, InParam args, RemoverRNA r) {
+	private static int filtBam(SamReader reader, HashMap<String, HashMap<String, JuncInfo>> out, HashMap<String, IntervalTree<ReadInfo>> itree, boolean ip_flag, InParam args, RemoverRNA r) {
 		int reads = 0;
 		int alignments = 0;
 		int map_ids = 0;
@@ -916,37 +922,32 @@ public class FileRW {
 	 * @param itree a tree to store alignments
 	 * @return alignments count
 	 */
-	public static int readTrim(InParam args, ArrayList<IntervalTree<ReadInfo>> itree){
+	public static int readTrim(InParam args, HashMap<String, IntervalTree<ReadInfo>> itree){
 		int reads = 0;
 		String trim_file = args.getTrim_file();
+		if (trim_file == null) {
+			return 0;
+		}
 		SamReader reader = null;
 		try {
-			if (trim_file !=null) {
-				RemoverRNA r = new RemoverRNA(args.getRrna_bed());
-				setToZero(input_chr_reads);
-				itree.clear();
-				for (int i = 0; i < 25; ++i) {
-					IntervalTree<ReadInfo> temp_tree = new IntervalTree<>();
-					temp_tree.setSentinel(null);
-					itree.add(temp_tree);
+			RemoverRNA r = new RemoverRNA(args.getRrna_bed());
+			itree.clear();
+			File fi = new File(trim_file);
+			FileRW.printNow("Scaning " + trim_file + " for BSJ at");
+			
+			reader = SamReaderFactory.makeDefault().open(fi);
+			for (SAMRecord samRecord : reader){
+				if (samRecord.getReadUnmappedFlag()) {
+					continue;
 				}
-				File fi = new File(trim_file);
-				FileRW.printNow("Scaning " + trim_file + " for BSJ at");
-				
-				reader = SamReaderFactory.makeDefault().open(fi);
-				for (SAMRecord samRecord : reader){
-					if (samRecord.getReadUnmappedFlag()) {
-						continue;
-					}
-					reads++;
-					if (reads % 1000000 == 0) {
-						printNow("Runing " + reads + " alignments at");
-					}
-					String line = samRecord.getSAMString();
-					lineToInterval(line, itree, r, false, args.isUniq_mode());
+				reads++;
+				if (reads % 1000000 == 0) {
+					printNow("Runing " + reads + " alignments at");
 				}
-				reader.close();
+				String line = samRecord.getSAMString();
+				lineToInterval(line, itree, r, false, args.isUniq_mode());
 			}
+			reader.close();
 		}
 		catch(IOException e){
 			e.printStackTrace();
@@ -972,8 +973,8 @@ public class FileRW {
 	 * @param itree a tree to store alignments;
 	 * @return a list of junctions divided into chromosomes;
 	 */
-	public static ArrayList<HashMap<String,JuncInfo>> filtTxt(InParam args, ArrayList<IntervalTree<ReadInfo>> itree) {
-		ArrayList<HashMap<String,JuncInfo>> out = creatJuncTable();
+	public static HashMap<String, HashMap<String,JuncInfo>> filtTxt(InParam args, HashMap<String, IntervalTree<ReadInfo>> itree) {
+		HashMap<String, HashMap<String, JuncInfo>> out = new HashMap<>();
 		int reads = 0;
 		boolean last_pair = false;
 		boolean unmap = false;
@@ -1040,7 +1041,7 @@ public class FileRW {
 		return out;
 	}
 	
-	private static double calP_ValueBack(FisherTest fisher_test, int back, int chr, int start, int end, IntervalTree<ReadInfo> itree, IntervalTree<ReadInfo> itree_input, JuncInfo junc, boolean linear_flag){
+	private static double calP_ValueBack(FisherTest fisher_test, int back, String chr, int start, int end, IntervalTree<ReadInfo> itree, IntervalTree<ReadInfo> itree_input, JuncInfo junc, boolean linear_flag){
 		double p_value = 1.0;
 		int ip_read = 0;
 		int input_read = 0;
@@ -1072,7 +1073,7 @@ public class FileRW {
 			p_value = fisher_test.calpValue(ip_read, input_read, ip_reads - ip_read, input_reads - input_read, 2);
 		}
 		else if (back < 0) {
-			p_value = fisher_test.calpValue(ip_read, input_read, ip_chr_reads[chr] - ip_read, input_chr_reads[chr] - input_read, 2);
+			p_value = fisher_test.calpValue(ip_read, input_read, ip_chr_reads.get(chr)[0] - ip_read, input_chr_reads.get(chr)[0] - input_read, 2);
 		}
 		else {
 			int ip_back = 0;
@@ -1102,7 +1103,7 @@ public class FileRW {
 		return p_value;
 	}
 	
-	private static ArrayList<Double> calP_ValueBack(FisherTest fisher_test, int back, int chr, int start, int end, int window_size, IntervalTree<ReadInfo> itree, IntervalTree<ReadInfo> itree_input, JuncInfo junc, boolean linear_flag){
+	private static ArrayList<Double> calP_ValueBack(FisherTest fisher_test, int back, String chr, int start, int end, int window_size, IntervalTree<ReadInfo> itree, IntervalTree<ReadInfo> itree_input, JuncInfo junc, boolean linear_flag){
 		ArrayList<Double> out = new ArrayList<>();
 		for (int i = start; i <= end; i+=window_size) {
 			double p_value = 1.0;
@@ -1139,7 +1140,7 @@ public class FileRW {
 				p_value = fisher_test.calpValue(ip_read, input_read, ip_reads - ip_read, input_reads - input_read, 2);
 			}
 			else if (back < 0) {
-				p_value = fisher_test.calpValue(ip_read, input_read, ip_chr_reads[chr] - ip_read, input_chr_reads[chr] - input_read, 2);
+				p_value = fisher_test.calpValue(ip_read, input_read,  ip_chr_reads.get(chr)[0] - ip_read, input_chr_reads.get(chr)[0] - input_read, 2);
 			}
 			else {
 				int ip_back = 0;
@@ -1224,11 +1225,11 @@ public class FileRW {
 	 * @param args command line parameters;
 	 * @param itree a tree of ip alignments information;
 	 * @param itree_input a tree of input alignments information;
-	 * @param juncs the junctions list
+	 * @param juncTable the junctions list
 	 * @param genes the tree of gtf file gene and exon information;
 	 * @param chr_lengths a list of all 25 chromosome lengths;
 	 */
-	public static void calPeak(InParam args, ArrayList<IntervalTree<ReadInfo>> itree, ArrayList<IntervalTree<ReadInfo>> itree_input, ArrayList<HashMap<String,JuncInfo>> juncs, ArrayList<IntervalTree<ArrayList<Gene>>> genes, ArrayList<Integer> chr_lengths){
+	public static void calPeak(InParam args, HashMap<String, IntervalTree<ReadInfo>> itree, HashMap<String, IntervalTree<ReadInfo>> itree_input, HashMap<String, HashMap<String, JuncInfo>> juncTable, HashMap<String, IntervalTree<ArrayList<Gene>>> genes, HashMap<String, Integer> chr_lengths){
 		if (ip_reads == 0 || input_reads == 0) {
 			return;
 		}
@@ -1253,8 +1254,15 @@ public class FileRW {
 			fileWrite(drop_file, out_put);
 		}
 		out_put.clear();
-		for(int chr = 0; chr < itree.size(); chr++) {
-			String chr_symbol = ExonInfo.chrNumToSymbol(chr);
+		ArrayList<String> chrs = new ArrayList<>();
+		chrs.addAll(juncTable.keySet());
+		Collections.sort(chrs);
+		for(int n = 0; n < chrs.size(); n++) {
+			String chr = chrs.get(n);
+			if (!chr_lengths.containsKey(chr)){
+				System.out.println("Unknown length of " + chr + ". Peak-calling terminate.");
+				return;
+			}
 			int chr_length = chr_lengths.get(chr);
 			int seg_start = 0;
 			int seg_end = 0;
@@ -1268,7 +1276,7 @@ public class FileRW {
 			ArrayList<String> circ_mid = new ArrayList<>();
 			ArrayList<String> circ_low = new ArrayList<>();
 			
-			for (Entry<String, JuncInfo> entry : juncs.get(chr).entrySet()) {
+			for (Entry<String, JuncInfo> entry : juncTable.get(chr).entrySet()) {
 				int start = entry.getValue().getSP();
 				int end = entry.getValue().getEP();
 				int max_window = (end - start) / window_size + 1;
@@ -1320,15 +1328,17 @@ public class FileRW {
 				}
 				if (start_windows + end_windows >= args.getPeak_length() / window_size && start_windows != 0 && end_windows != 0){
 					Bed12 record = new Bed12();
-					record.setChr(chr_symbol);
+					record.setChr(chr);
 					record.setStrand(entry.getValue().getStrand());
 					record.setScore(p_mean / (start_windows + end_windows));
 					record.setBlock_count(2);
 					StringBuffer name = new StringBuffer();
-					name.append(entry.getValue().getGenes().get(0));
-					for (int i = 1; i < entry.getValue().getGenes().size(); ++i) {
-						name.append(':');
-						name.append(entry.getValue().getGenes().get(i));
+					if (entry.getValue().getGenes().size() > 0){
+						name.append(entry.getValue().getGenes().get(0));
+						for (int i = 1; i < entry.getValue().getGenes().size(); ++i) {
+							name.append(':');
+							name.append(entry.getValue().getGenes().get(i));
+						}
 					}
 					name.append(':');
 					name.append(start - 1);
@@ -1474,7 +1484,7 @@ public class FileRW {
 					double ava = total_p_value / (seg_end - seg_start + 1);
 					if (last_p) {
 						peak_tree.put(seg_start, seg_end, ava);
-						out_dev.add(chr_symbol + "\t" + (seg_start * window_size) + "\t" + (seg_end * window_size + window_size));
+						out_dev.add(chr + "\t" + (seg_start * window_size) + "\t" + (seg_end * window_size + window_size));
 					}
 					last_p = false;
 					total_p_value = 0.0;
@@ -1482,7 +1492,7 @@ public class FileRW {
 			}
 			if (last_p) {
 				peak_tree.put(seg_start, seg_end, total_p_value / (seg_end - seg_start + 1));
-				out_dev.add(chr_symbol + "\t" + (seg_start * window_size) + "\t" + (seg_end * window_size + window_size));
+				out_dev.add(chr + "\t" + (seg_start * window_size) + "\t" + (seg_end * window_size + window_size));
 			}
 			fileAppend(peak_file, out_put);
 			if (args.isRetain_test()) {
@@ -1491,9 +1501,12 @@ public class FileRW {
 			out_dev.clear();
 			out_put.clear();
 			HashMap<String, Bed12> junc_peaks = new HashMap<>();
-			Iterator<Node<ArrayList<Gene>>> itera = genes.get(chr).iterator();
+			Iterator<Node<ArrayList<Gene>>> itera = null;
+			if (genes.containsKey(chr)){
+				itera = genes.get(chr).iterator();
+			}
 			HashMap<Node<Double>, Bed12> drop_nodes = new HashMap<>();
-			while (itera.hasNext()) {
+			while (itera != null && itera.hasNext()) {
 				Node<ArrayList<Gene>> gene_node = itera.next();
 				for (int g = 0; g < gene_node.getValue().size(); g++) {
 					ArrayList<Transcript> scripts = gene_node.getValue().get(g).getTranscripts();
@@ -1567,7 +1580,7 @@ public class FileRW {
 									drop = new HashMap<>();
 									record = new Bed12();
 									key_index = 0;
-									record.setChr(chr_symbol);
+									record.setChr(chr);
 									record.setStrand(scripts.get(i).getStrand());
 									record.setStart(Math.max(start, node.getStart()));
 									record.setEnd(Math.min(end, node.getEnd()));
@@ -1630,8 +1643,11 @@ public class FileRW {
 				peak_tree.remove(node.getStart(), node.getEnd());
 			}
 			drop_nodes = new HashMap<>();
-			itera = genes.get(chr).iterator();
-			while (itera.hasNext()) {
+			itera = null;
+			if (genes.containsKey(chr)){
+				itera = genes.get(chr).iterator();
+			}
+			while (itera != null && itera.hasNext()) {
 				Node<ArrayList<Gene>> gene_node = itera.next();
 				Iterator<Node<Double>> nodes = peak_tree.overlappers(gene_node.getStart() / window_size, gene_node.getEnd() / window_size);
 				while(nodes.hasNext()) {
@@ -1640,7 +1656,7 @@ public class FileRW {
 					int end = Math.min(gene_node.getEnd(), node.getEnd() * window_size + window_size);
 					if (end - start  + 1>= args.getPeak_length()) {
 						Bed12 record = new Bed12();
-						record.setChr(chr_symbol);
+						record.setChr(chr);
 						record.setStrand(gene_node.getValue().get(0).getStrand());
 						record.setStart(start);
 						record.setEnd(end);
@@ -1751,28 +1767,15 @@ public class FileRW {
 	}
 	
 	/**
-	 * creat a list of size 25 to get backjunctions
-	 * @return the list 
-	 */
-	private static ArrayList<HashMap<String,JuncInfo>> creatJuncTable(){
-		ArrayList<HashMap<String,JuncInfo>> out = new ArrayList<HashMap<String,JuncInfo>>();
-		for (int i = 0; i < 25; ++i){
-			HashMap<String,JuncInfo> temp = new HashMap<String,JuncInfo>();
-			out.add(temp);
-		}
-		return out;
-	}
-	
-	/**
 	 * to file all junctions through gene information
-	 * @param junc_map a list of junctions of 25 chromosomes
+	 * @param juncTable a list of junctions of 25 chromosomes
 	 * @param genes trees of gene information of 25 chromosomes
 	 */
-	private static void filtJuncTable(ArrayList<HashMap<String,JuncInfo>> junc_map, ArrayList<IntervalTree<ArrayList<Gene>>> genes) {
+	private static void filtJuncTable(HashMap<String, HashMap<String, JuncInfo>> juncTable, HashMap<String, IntervalTree<ArrayList<Gene>>> genes) {
 		int count = 0;
-		for (int i=0; i < junc_map.size(); ++i) {
-			junc_map.set(i, filtJuncTable(junc_map.get(i), genes.get(i)));
-			count += junc_map.get(i).size();
+		for (Entry<String, HashMap<String, JuncInfo>> entry : juncTable.entrySet()) {
+			entry.setValue(filtJuncTable(entry.getValue(), genes.get(entry.getKey())));
+			count += entry.getValue().size();
 		}
 		System.out.println("BSJ with in gene: " + count);
 	}
@@ -1819,40 +1822,53 @@ public class FileRW {
 	 * @param ip_flag whether the alignment is in IP file;
 	 * @return whether this alignment is in rRNA regions
 	 */
-	private static int lineToInterval(String line, ArrayList<IntervalTree<ReadInfo>> itree, RemoverRNA r, boolean ip_flag, boolean uniq_map) {
+	private static int lineToInterval(String line, HashMap<String, IntervalTree<ReadInfo>> itree, RemoverRNA r, boolean ip_flag, boolean uniq_map) {
 		int out = 0;
 		if (itree == null) {
 			return out;
 		}
 		String[] cols = line.split("\t");
 		
-		int chr_num = ExonInfo.chrSymbolToNum(cols[2]);
+		String chr = cols[2];
 		int xa_index = line.indexOf("XA:Z:");
-		if (chr_num >= 0 && chr_num < itree.size()) {
-			int start = Integer.parseInt(cols[3]);
-			int end = ExonInfo.getEnd(start, cols[5]); 
-			if (!r.isrRNA(chr_num, start, end)) {
-				++out;
-				ReadInfo old = itree.get(chr_num).put(start, end, null);
-				ReadInfo value = old;
-				if (value == null) {
-					value = new ReadInfo();
-				}
-				if (ip_flag) {
-					++ip_chr_reads[chr_num];
-				}
-				else {
-					++input_chr_reads[chr_num];
-				}
-				if (uniq_map && xa_index == -1) {
-					value.incNo_xa();
-					itree.get(chr_num).put(start, end, value);
+		if (!itree.containsKey(chr)){
+			IntervalTree<ReadInfo> temp_T = new IntervalTree<>();
+			temp_T.setSentinel(null);
+			itree.put(chr, temp_T);
+		}
+		int start = Integer.parseInt(cols[3]);
+		int end = ExonInfo.getEnd(start, cols[5]); 
+		if (!r.isrRNA(chr, start, end)) {
+			++out;
+			ReadInfo old = itree.get(chr).put(start, end, null);
+			ReadInfo value = old;
+			if (value == null) {
+				value = new ReadInfo();
+			}
+			if (ip_flag) {
+				if (ip_chr_reads.containsKey(chr)){
+					++ip_chr_reads.get(chr)[0];
 				}
 				else {
-					value.incNo_xa();
-					itree.get(chr_num).put(start, end, value);
+					ip_chr_reads.put(chr, new int[]{1});
 				}
 			}
+			else {
+				if (input_chr_reads.containsKey(chr)){
+					++input_chr_reads.get(chr)[0];
+				}
+				else {
+					input_chr_reads.put(chr, new int[]{1});
+				}
+			}
+//			if (uniq_map && xa_index == -1) {
+				value.incNo_xa();
+				itree.get(chr).put(start, end, value);
+//			}
+//			else {
+//				value.incNo_xa();
+//				itree.get(chr).put(start, end, value);
+//			}
 		}
 		if (!uniq_map && xa_index != -1) {
 			String xa = line.substring(xa_index);
@@ -1867,29 +1883,42 @@ public class FileRW {
 			String[] reads = xa.split(";");
 			for (int i = 0; i < reads.length; ++i) {
 				String[] xa_cols = reads[i].split(",");
-				chr_num = ExonInfo.chrSymbolToNum(xa_cols[0]);
-				if (chr_num >= 0 && chr_num < itree.size()) {
-					int start = Integer.parseInt(xa_cols[1]);
-					if (start < 0) {
-						start = -start;
-					}
-					int end = ExonInfo.getEnd(start, xa_cols[2]);
-					if (!r.isrRNA(chr_num, start, end)) {
-						++out;
-						if (ip_flag) {
-							++ip_chr_reads[chr_num];
+				chr = xa_cols[0];
+				if (!itree.containsKey(chr)){
+					IntervalTree<ReadInfo> temp_T = new IntervalTree<>();
+					temp_T.setSentinel(null);
+					itree.put(chr, temp_T);
+				}
+				start = Integer.parseInt(xa_cols[1]);
+				if (start < 0) {
+					start = -start;
+				}
+				end = ExonInfo.getEnd(start, xa_cols[2]);
+				if (!r.isrRNA(chr, start, end)) {
+					++out;
+					if (ip_flag) {
+						if (ip_chr_reads.containsKey(chr)){
+							++ip_chr_reads.get(chr)[0];
 						}
 						else {
-							++input_chr_reads[chr_num];
+							ip_chr_reads.put(chr, new int[]{1});
 						}
-						ReadInfo old = itree.get(chr_num).put(start, end, null);
-						ReadInfo value = old;
-						if (value == null) {
-							value = new ReadInfo();
-						}
-						value.incNo_xa();
-						itree.get(chr_num).put(start, end, value);
 					}
+					else {
+						if (input_chr_reads.containsKey(chr)){
+							++input_chr_reads.get(chr)[0];
+						}
+						else {
+							input_chr_reads.put(chr, new int[]{1});
+						}
+					}
+					ReadInfo old = itree.get(chr).put(start, end, null);
+					ReadInfo value = old;
+					if (value == null) {
+						value = new ReadInfo();
+					}
+					value.incNo_xa();
+					itree.get(chr).put(start, end, value);
 				}
 			}
 		}
@@ -1899,14 +1928,14 @@ public class FileRW {
 	/**
 	 * counting single end support reads to junctions in a tree 
 	 * @param itree trees that stored alignments;
-	 * @param juncs junctions found;
+	 * @param juncTable junctions found;
 	 * @param ip_flag whether this is a tree of IP file;
 	 */
-	private static void countSamfile(ArrayList<IntervalTree<ReadInfo>> itree,  ArrayList<HashMap<String,JuncInfo>> juncs, boolean ip_flag) {
-		for (int i = 0; i < juncs.size(); ++i) {
-			for (Entry<String, JuncInfo> entry : juncs.get(i).entrySet()) {
+	private static void countSamfile(HashMap<String, IntervalTree<ReadInfo>> itree,  HashMap<String, HashMap<String, JuncInfo>> juncTable, boolean ip_flag) {
+		for (Entry<String, HashMap<String, JuncInfo>> j_entry : juncTable.entrySet()) {
+			for (Entry<String, JuncInfo> entry : j_entry.getValue().entrySet()) {
 				JuncInfo junc = entry.getValue();
-				Iterator<Node<ReadInfo>> nodes = itree.get(i).overlappers(junc.getSP() - halfDev, junc.getSP() + halfDev);
+				Iterator<Node<ReadInfo>> nodes = itree.get(j_entry.getKey()).overlappers(junc.getSP() - halfDev, junc.getSP() + halfDev);
 				while(nodes.hasNext()) {
 					Node<ReadInfo> node = nodes.next();
 					ReadInfo value = node.getValue();
@@ -1920,7 +1949,7 @@ public class FileRW {
 						}
 					}
 				}
-				nodes = itree.get(i).overlappers(junc.getEP() - halfDev, junc.getEP() + halfDev);
+				nodes = itree.get(j_entry.getKey()).overlappers(junc.getEP() - halfDev, junc.getEP() + halfDev);
 				while(nodes.hasNext()) {
 					Node<ReadInfo> node = nodes.next();
 					ReadInfo value = node.getValue();

@@ -13,9 +13,9 @@ public class HandleReads {
 	private int read_lenth = 0;
 	private int seg_dev = 5;
 	private class Segment{
-		private int chr_num=0;
-		private int pos_start=0;
-		private int pos_end=0;
+		private String chr = null;
+		private int pos_start = 0;
+		private int pos_end = 0;
 		private boolean positive;
 	}
 	
@@ -33,7 +33,7 @@ public class HandleReads {
 	 * @param pair_flag whether enable pair examine;
 	 * @return removed rRNA alignments;
 	 */
-	public int filtPCC(InParam args, String[] reads, int length, ArrayList<HashMap<String, JuncInfo>> out,String[] reads2, int length2, boolean ip_flag, ArrayList<IntervalTree<ReadInfo>> itree, RemoverRNA r) {
+	public int filtPCC(InParam args, String[] reads, int length, HashMap<String, HashMap<String, JuncInfo>> out,String[] reads2, int length2, boolean ip_flag, HashMap<String, IntervalTree<ReadInfo>> itree, RemoverRNA r) {
 		int rrna = 0;
 		int circ_length = args.getCirc_length();
 		int max_circ = args.getCirc_max_length();
@@ -49,10 +49,10 @@ public class HandleReads {
 			for (int i = 0; i < length; ++i) {
 				String[] cols = reads[i].split("\t");
 				id = cols[0];
-				int chr_num = ExonInfo.chrSymbolToNum(cols[2]);
+				String chr = cols[2];
 				int xa_index = reads[i].indexOf("XA:Z:");
-				if (chr_num >= 0 && chr_num < out.size() && (!uniq_map || xa_index == -1)) {
-					this.addSegment(seg_map, chr_num, cols[5], Integer.parseInt(cols[3]), (Integer.parseInt(cols[1]) >>> 4 & 1) == 0, r, examin_list1);
+				if (!uniq_map || xa_index == -1) {
+					this.addSegment(seg_map, chr, cols[5], Integer.parseInt(cols[3]), (Integer.parseInt(cols[1]) >>> 4 & 1) == 0, r, examin_list1);
 				}
 				if (!uniq_map && xa_index != -1) {
 					String xa = reads[i].substring(xa_index);
@@ -70,10 +70,10 @@ public class HandleReads {
 			for (int i = 0; i < length2; ++i) {
 				String[] cols = reads2[i].split("\t");
 				id = cols[0];
-				int chr_num = ExonInfo.chrSymbolToNum(cols[2]);
+				String chr = cols[2];
 				int xa_index = reads2[i].indexOf("XA:Z:");
-				if (chr_num >= 0 && chr_num < out.size() && (!uniq_map || xa_index == -1)) {
-					this.addSegment(seg_map, chr_num, cols[5], Integer.parseInt(cols[3]), (Integer.parseInt(cols[1]) >>> 4 & 1) == 0, r, examin_list2);
+				if (!uniq_map || xa_index == -1) {
+					this.addSegment(seg_map, chr, cols[5], Integer.parseInt(cols[3]), (Integer.parseInt(cols[1]) >>> 4 & 1) == 0, r, examin_list2);
 				}
 				if (!uniq_map && xa_index != -1) {
 					String xa = reads2[i].substring(xa_index);
@@ -96,7 +96,7 @@ public class HandleReads {
 				HashSet<Segment> clip_front_added = new HashSet<>();
 				HashSet<Segment> clip_behind_added = new HashSet<>();
 				for (int i = 0; i < clip_list.size(); i+=2) {
-					int chr_num = clip_list.get(i).chr_num;
+					String chr = clip_list.get(i).chr;
 					int start = clip_list.get(i).pos_start;
 //					if (start == 40541619) {
 //						System.out.println("Debug");
@@ -104,42 +104,45 @@ public class HandleReads {
 					int end = clip_list.get(i + 1).pos_end;
 					if (end - start >= circ_length && end - start <= max_circ) {
 						String key = start + "\t" + end;
-						HashMap <String, JuncInfo> the_chr = out.get(chr_num);
+						if (!out.containsKey(chr)){
+							out.put(chr, new HashMap<>());
+						}
+						HashMap <String, JuncInfo> the_chr = out.get(chr);
 						if (!the_chr.containsKey(key)) {
 							JuncInfo the_junc = null;
 							the_junc = new JuncInfo(start, end);
-							if (add_flag && (!pair_flag || examin_list2.size() == 0 || this.pairEndPCC(the_junc, examin_list2, chr_num))) {
+							if (add_flag && (!pair_flag || examin_list2.size() == 0 || this.pairEndPCC(the_junc, examin_list2, chr))) {
 								the_junc.addReadID(id, ip_flag);
 								the_chr.put(key, the_junc);
 								if (clip_front_added.add(clip_list.get(i))) {
-									ReadInfo old = itree.get(chr_num).put(start, clip_list.get(i).pos_end, null);
+									ReadInfo old = itree.get(chr).put(start, clip_list.get(i).pos_end, null);
 									ReadInfo value = old;
 									value.incCirc_front();
-									itree.get(chr_num).put(start, clip_list.get(i).pos_end, value);
+									itree.get(chr).put(start, clip_list.get(i).pos_end, value);
 								}
 								if (clip_behind_added.add(clip_list.get(i + 1))) {
-									ReadInfo old = itree.get(chr_num).put(clip_list.get(i + 1).pos_start, end, null);
+									ReadInfo old = itree.get(chr).put(clip_list.get(i + 1).pos_start, end, null);
 									ReadInfo value = old;
 									value.incCirc_behind();
-									itree.get(chr_num).put(clip_list.get(i + 1).pos_start, end, value);
+									itree.get(chr).put(clip_list.get(i + 1).pos_start, end, value);
 								}
 							}
 						}
 						else {
 							JuncInfo the_junc = the_chr.get(key);
-							if (!pair_flag || examin_list2.size() == 0 || this.pairEndPCC(the_junc, examin_list2, chr_num)) {
+							if (!pair_flag || examin_list2.size() == 0 || this.pairEndPCC(the_junc, examin_list2, chr)) {
 								the_junc.addReadID(id, ip_flag);
 								if (clip_front_added.add(clip_list.get(i))) {
-									ReadInfo old = itree.get(chr_num).put(start, clip_list.get(i).pos_end, null);
+									ReadInfo old = itree.get(chr).put(start, clip_list.get(i).pos_end, null);
 									ReadInfo value = old;
 									value.incCirc_front();
-									itree.get(chr_num).put(start, clip_list.get(i).pos_end, value);
+									itree.get(chr).put(start, clip_list.get(i).pos_end, value);
 								}
 								if (clip_behind_added.add(clip_list.get(i + 1))) {
-									ReadInfo old = itree.get(chr_num).put(clip_list.get(i + 1).pos_start, end, null);
+									ReadInfo old = itree.get(chr).put(clip_list.get(i + 1).pos_start, end, null);
 									ReadInfo value = old;
 									value.incCirc_behind();
-									itree.get(chr_num).put(clip_list.get(i + 1).pos_start, end, value);
+									itree.get(chr).put(clip_list.get(i + 1).pos_start, end, value);
 								}
 							}
 						}
@@ -154,47 +157,50 @@ public class HandleReads {
 				HashSet<Segment> clip_front_added = new HashSet<>();
 				HashSet<Segment> clip_behind_added = new HashSet<>();
 				for (int i = 0; i < clip_list.size(); i+=2) {
-					int chr_num = clip_list.get(i).chr_num;
+					String chr = clip_list.get(i).chr;
 					int start = clip_list.get(i).pos_start;
 					int end = clip_list.get(i + 1).pos_end;
 					if (end - start >= circ_length && end - start <= max_circ) {
 						String key = start + "\t" + end;
-						HashMap <String, JuncInfo> the_chr = out.get(chr_num);
+						if (!out.containsKey(chr)){
+							out.put(chr, new HashMap<>());
+						}
+						HashMap <String, JuncInfo> the_chr = out.get(chr);
 						if (!the_chr.containsKey(key)) {
 							JuncInfo the_junc = null;
 							the_junc = new JuncInfo(start, end);
-							if (add_flag && (!pair_flag || examin_list1.size() == 0 || this.pairEndPCC(the_junc, examin_list1, chr_num))) {
+							if (add_flag && (!pair_flag || examin_list1.size() == 0 || this.pairEndPCC(the_junc, examin_list1, chr))) {
 								the_junc.addReadID(id, ip_flag);
 								the_chr.put(key, the_junc);
 								if (clip_front_added.add(clip_list.get(i))) {
-									ReadInfo old = itree.get(chr_num).put(start, clip_list.get(i).pos_end, null);
+									ReadInfo old = itree.get(chr).put(start, clip_list.get(i).pos_end, null);
 									ReadInfo value = old;
 									value.incCirc_front();
-									itree.get(chr_num).put(start, clip_list.get(i).pos_end, value);
+									itree.get(chr).put(start, clip_list.get(i).pos_end, value);
 								}
 								if (clip_behind_added.add(clip_list.get(i + 1))) {
-									ReadInfo old = itree.get(chr_num).put(clip_list.get(i + 1).pos_start, end, null);
+									ReadInfo old = itree.get(chr).put(clip_list.get(i + 1).pos_start, end, null);
 									ReadInfo value = old;
 									value.incCirc_behind();
-									itree.get(chr_num).put(clip_list.get(i + 1).pos_start, end, value);
+									itree.get(chr).put(clip_list.get(i + 1).pos_start, end, value);
 								}
 							}
 						}
 						else {
 							JuncInfo the_junc = the_chr.get(key);
-							if (!pair_flag || examin_list1.size() == 0 || this.pairEndPCC(the_junc, examin_list1, chr_num)) {
+							if (!pair_flag || examin_list1.size() == 0 || this.pairEndPCC(the_junc, examin_list1, chr)) {
 								the_junc.addReadID(id, ip_flag);
 								if (clip_front_added.add(clip_list.get(i))) {
-									ReadInfo old = itree.get(chr_num).put(start, clip_list.get(i).pos_end, null);
+									ReadInfo old = itree.get(chr).put(start, clip_list.get(i).pos_end, null);
 									ReadInfo value = old;
 									value.incCirc_front();
-									itree.get(chr_num).put(start, clip_list.get(i).pos_end, value);
+									itree.get(chr).put(start, clip_list.get(i).pos_end, value);
 								}
 								if (clip_behind_added.add(clip_list.get(i + 1))) {
-									ReadInfo old = itree.get(chr_num).put(clip_list.get(i + 1).pos_start, end, null);
+									ReadInfo old = itree.get(chr).put(clip_list.get(i + 1).pos_start, end, null);
 									ReadInfo value = old;
 									value.incCirc_behind();
-									itree.get(chr_num).put(clip_list.get(i + 1).pos_start, end, value);
+									itree.get(chr).put(clip_list.get(i + 1).pos_start, end, value);
 								}
 							}
 						}
@@ -212,11 +218,11 @@ public class HandleReads {
 	 * @param chr which chr find the junction; 
 	 * @return true if pass the examine
 	 */
-	public boolean pairEndPCC(JuncInfo junc, ArrayList<Segment> segs, int chr) {
+	public boolean pairEndPCC(JuncInfo junc, ArrayList<Segment> segs, String chr) {
 		boolean out = false;
 		for (int i = 0; i < segs.size(); ++i) {
 			Segment seg = segs.get(i);
-			if (seg.chr_num == chr && seg.pos_start >= junc.getSP() - seg_dev && seg.pos_end <= junc.getEP() + seg_dev) {
+			if (seg.chr.equals(chr) && seg.pos_start >= junc.getSP() - seg_dev && seg.pos_end <= junc.getEP() + seg_dev) {
 				out |= true;
 				break;
 			}
@@ -235,7 +241,7 @@ public class HandleReads {
 	 * @param pair_examin add the segment to examine(output);
 	 * @return key of this segment
 	 */
-	public int addSegment(HashMap<Integer, ArrayList<Segment>> seg_map, int chr_num, String cigar_string, int pos, boolean positive, RemoverRNA r, ArrayList<Segment> pair_examin) {
+	public int addSegment(HashMap<Integer, ArrayList<Segment>> seg_map, String chr, String cigar_string, int pos, boolean positive, RemoverRNA r, ArrayList<Segment> pair_examin) {
 		ArrayList<Segment> seg_list = null;
 		int[] cigar = getSegment(cigar_string, positive);
 		int seg_key = cigar[2] * this.read_lenth + cigar[0];
@@ -246,7 +252,7 @@ public class HandleReads {
 			seg_list = new ArrayList<>();
 		}
 		Segment seg = new Segment();
-		seg.chr_num = chr_num;
+		seg.chr = chr;
 		seg.positive = positive;
 		seg.pos_start = pos;
 //		if (pos == 233295323) {
@@ -254,7 +260,7 @@ public class HandleReads {
 //		}
 		seg.pos_end = pos + cigar[1];
 		pair_examin.add(seg);
-		if (!r.isrRNA(chr_num, seg.pos_start, seg.pos_end)) {
+		if (!r.isrRNA(chr, seg.pos_start, seg.pos_end)) {
 			seg_list.add(seg);
 			seg_map.put(seg_key, seg_list);
 		}
@@ -417,26 +423,24 @@ public class HandleReads {
 				start_pos = -start_pos;
 				p = false;
 			}
-			int chr_num = ExonInfo.chrSymbolToNum(cols[0]);
-			if (chr_num >= 0) {
-				int[] cigar = getSegment(cols[2], p);
-				int seg_key = cigar[2] * this.read_lenth + cigar[0];
-				ArrayList<Segment> seg_list = null;
-				if (seg_map.containsKey(seg_key)) {
-					seg_list = seg_map.get(seg_key);
-				}
-				else {
-					seg_list = new ArrayList<>();
-				}
-				Segment seg = new Segment();
-				seg.chr_num = chr_num;
-				seg.positive = p;
-				seg.pos_start = start_pos;
-				seg.pos_end = start_pos + cigar[1];
-				if (!r.isrRNA(chr_num, seg.pos_start, seg.pos_end)) {
-					seg_list.add(seg);
-					seg_map.put(seg_key, seg_list);
-				}
+			String chr = cols[0];
+			int[] cigar = getSegment(cols[2], p);
+			int seg_key = cigar[2] * this.read_lenth + cigar[0];
+			ArrayList<Segment> seg_list = null;
+			if (seg_map.containsKey(seg_key)) {
+				seg_list = seg_map.get(seg_key);
+			}
+			else {
+				seg_list = new ArrayList<>();
+			}
+			Segment seg = new Segment();
+			seg.chr = chr;
+			seg.positive = p;
+			seg.pos_start = start_pos;
+			seg.pos_end = start_pos + cigar[1];
+			if (!r.isrRNA(chr, seg.pos_start, seg.pos_end)) {
+				seg_list.add(seg);
+				seg_map.put(seg_key, seg_list);
 			}
 		}
 	}
@@ -451,7 +455,7 @@ public class HandleReads {
 	 * @param itree a tree to store one site mapping alignments;
 	 * @param examin a list for checking pair end;
 	 */
-	private void getAllClip(String id, int the_seg, int dev, HashMap<Integer, ArrayList<Segment>> segs, ArrayList<Segment> seg_list, ArrayList<IntervalTree<ReadInfo>> itree, ArrayList<Segment> examin) {
+	private void getAllClip(String id, int the_seg, int dev, HashMap<Integer, ArrayList<Segment>> segs, ArrayList<Segment> seg_list, HashMap<String, IntervalTree<ReadInfo>> itree, ArrayList<Segment> examin) {
 		ArrayList<Segment> seg_temp = new ArrayList<>();
 		int start = the_seg / this.read_lenth;
 		int end = the_seg % this.read_lenth;
@@ -471,7 +475,7 @@ public class HandleReads {
 							if (up == down) {
 								continue;
 							}
-							if (down.chr_num == up.chr_num && !(up.positive ^ down.positive)) {
+							if (down.chr.equals(up.chr) && !(up.positive ^ down.positive)) {
 								behind_seg = true;
 								if (up.positive && down.pos_start <= up.pos_end) {
 //									Segment seg = new Segment();
@@ -510,7 +514,7 @@ public class HandleReads {
 					for (int j = 0; j < down_seg.size(); ++j) {
 						Segment down = down_seg.get(j);
 						Segment up = up_seg.get(i);
-						if (down.chr_num == up.chr_num && !(up.positive ^ down.positive)) {
+						if (down.chr.equals(up.chr) && !(up.positive ^ down.positive)) {
 							front_seg = true;
 						}
 					}
@@ -522,13 +526,13 @@ public class HandleReads {
 				Segment seg = segs.get(the_seg).get(j);
 				boolean front = examin.size() == 0;
 				for (int i = 0; i < examin.size(); ++i) {
-					if (seg.chr_num == examin.get(i).chr_num && seg.pos_end >= examin.get(i).pos_end) {
+					if (seg.chr.equals(examin.get(i).chr) && seg.pos_end >= examin.get(i).pos_end) {
 						front |= true;
 						break;
 					}
 				}
 				if (front) {
-					ReadInfo old = itree.get(seg.chr_num).put(seg.pos_start, seg.pos_end, null);
+					ReadInfo old = itree.get(seg.chr).put(seg.pos_start, seg.pos_end, null);
 					ReadInfo value = old;
 					if (seg.positive) {
 						value.incBehind();
@@ -536,7 +540,7 @@ public class HandleReads {
 					else {
 						value.incFront();
 					}
-					itree.get(seg.chr_num).put(seg.pos_start, seg.pos_end, value);
+					itree.get(seg.chr).put(seg.pos_start, seg.pos_end, value);
 				}
 			}
 		}
@@ -545,13 +549,13 @@ public class HandleReads {
 				Segment seg = segs.get(the_seg).get(j);
 				boolean behind = examin.size() == 0;
 				for (int i = 0; i < examin.size(); ++i) {
-					if (seg.chr_num == examin.get(i).chr_num && seg.pos_start <= examin.get(i).pos_start) {
+					if (seg.chr.equals(examin.get(i).chr)  && seg.pos_start <= examin.get(i).pos_start) {
 						behind |= true;
 						break;
 					}
 				}
 				if (behind) {
-					ReadInfo old = itree.get(seg.chr_num).put(seg.pos_start, seg.pos_end, null);
+					ReadInfo old = itree.get(seg.chr).put(seg.pos_start, seg.pos_end, null);
 					ReadInfo value = old;
 					if (seg.positive) {
 						value.incFront();
@@ -559,7 +563,7 @@ public class HandleReads {
 					else {
 						value.incBehind();
 					}
-					itree.get(seg.chr_num).put(seg.pos_start, seg.pos_end, value);
+					itree.get(seg.chr).put(seg.pos_start, seg.pos_end, value);
 				}
 			}
 		}

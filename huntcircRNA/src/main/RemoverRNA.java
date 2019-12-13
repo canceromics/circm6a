@@ -5,7 +5,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 
 import htsjdk.samtools.util.IntervalTree;
@@ -13,7 +13,7 @@ import htsjdk.samtools.util.IntervalTree.Node;
 
 public class RemoverRNA {
 	
-	private ArrayList<IntervalTree<Integer>> rRNA_trees =null;
+	private HashMap<String, IntervalTree<Integer>> rRNA_trees =null;
 	
 	/**
 	 * using the bed file to build filting tree, no tree if null
@@ -21,22 +21,25 @@ public class RemoverRNA {
 	 */
 	public RemoverRNA(String bed) {
 		if (bed != null) {
-			this.rRNA_trees = new ArrayList<>();
+			this.rRNA_trees = new HashMap<>();
 			this.creatTree(bed);
 		}
 	}
 	
 	/**
 	 * determine whether this region is a rRNA region
-	 * @param chr_num region chromosome
+	 * @param chr region chromosome
 	 * @param start region start
 	 * @param end region end
 	 * @return true if no less than a half drop in rRNA region
 	 */
-	public boolean isrRNA(int chr_num, int start, int end) {
+	public boolean isrRNA(String chr, int start, int end) {
 		boolean out = false;
 		if (this.rRNA_trees != null) {
-			IntervalTree<Integer> tree = this.rRNA_trees.get(chr_num);
+			IntervalTree<Integer> tree = this.rRNA_trees.get(chr);
+			if (tree == null){
+				return out;
+			}
 			Iterator<Node<Integer>> nodes = tree.overlappers(start, end);
 			while (nodes.hasNext()) {
 				Node<Integer> node = nodes.next();
@@ -66,20 +69,18 @@ public class RemoverRNA {
 			}
 			reader = new BufferedReader(isr);
 			String line = null;
-			for (int i = 0; i < 25; ++i) {
-				IntervalTree<Integer> temp = new IntervalTree<>();
-				temp.setSentinel(null);
-				this.rRNA_trees.add(temp);
-			}
 			while ((line = reader.readLine()) != null) {
 				String[] cols = line.split("\t");
-				int chr_num = ExonInfo.chrSymbolToNum(cols[0]);
-				if (chr_num >= 0) {
-					IntervalTree<Integer> tree = this.rRNA_trees.get(chr_num);
-					int start = Integer.parseInt(cols[1]);
-					int end = Integer.parseInt(cols[2]);
-					tree.put(start, end, null);
+				String chr = cols[0];
+				if (this.rRNA_trees.containsKey(chr)){
+					IntervalTree<Integer> temp_T = new IntervalTree<>();
+					temp_T.setSentinel(null);
+					this.rRNA_trees.put(chr, temp_T);
 				}
+				IntervalTree<Integer> tree = this.rRNA_trees.get(chr);
+				int start = Integer.parseInt(cols[1]);
+				int end = Integer.parseInt(cols[2]);
+				tree.put(start, end, null);
 			}
 		}
 		catch(IOException e){
