@@ -93,4 +93,4 @@ coming soon...
 
 
 ## License
-Copyright (C) 2020 zuoLab. Licensed GPLv3 for open source use or contact zuoLab (zuozhx@sysucc.org.cn) for commercial use.
+Licensed GPLv3 for open source use or contact zuoLab (zuozhx@sysucc.org.cn) for commercial use.
