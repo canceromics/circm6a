@@ -29,7 +29,7 @@ jar -cvmf META-INF/MANIFEST.MF circm6a.jar *
 * Start from bam files of IP sample and Input sample
 
 ```
-java -Xmx16g -jar circm6A.jar -ip IP.bam -input Input.bam -o ${out_dir}/${file_prefix}
+java -Xmx16g -jar circm6A.jar -ip IP.bam -input Input.bam -o output_dir/file_prefix
 ```
 
 ## Usage
@@ -63,11 +63,11 @@ For usage:
 ### Example
 
   ```
-java -Xmx16g -jar circm6A.jar -ip IP.bam -input Input.bam -r Gencode.gtf -g hg38.fa -o ${out_dir}/${file_prefix} -rrna -pair  -dev 5 -sup 5
+java -Xmx16g -jar circm6A.jar -ip IP.bam -input Input.bam -r Gencode.gtf -g hg38.fa -o output_dir/file_prefix -dev 5 -sup 5
   ```
 
 ### Output
-* ${out_dir}/${file_prefix}_circ.bed
+* output_dir/prefix_circ.bed
 
 | Field       | Description                           |
 | :---------- | :------------------------------------ |
@@ -89,7 +89,8 @@ java -Xmx16g -jar circm6A.jar -ip IP.bam -input Input.bam -r Gencode.gtf -g hg38
 
 ## Citation
 
-XXXXXXX
+coming soon...
 
 
 ## License
+Licensed GPLv3 for open source use or contact zuoLab (zuozhx@sysucc.org.cn) for commercial use.
