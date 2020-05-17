@@ -1,3 +1,5 @@
+<img src="icon.png" align="right" />
+
 # Circm6A
 
 Circm6A is a powerful tool for detection  m6A modification of circular RNA(circRNA).
@@ -9,8 +11,8 @@ Circm6A is a powerful tool for detection  m6A modification of circular RNA(circR
 * [Installation](#Installation)
 * [Quick Start Guide](#QuickStart)
 * [Usage ](#Usage)
-* [Authors](#Authors)
-* [Citation](#Citation)
+* [Example](#Example)
+* [Output Headers](#OutputHeaders)
 * [License](#License)
 
 ## Requirements
@@ -18,21 +20,30 @@ Circm6A is a powerful tool for detection  m6A modification of circular RNA(circR
 * JDK 8
 
 ## Installation
+
+* This tool can be installed by instructions as follows:
+
 ```
 git clone https://github.com/canceromics/circm6a.git
 cd circm6a/huntcircRNA
 javac -d ./ -classpath ./lib/htsjdk-2.10.1.jar ./src/main/*.java
 jar -cvmf META-INF/MANIFEST.MF circm6a.jar *
 ```
+* The tool is generated as circm6a.jar in this directory.
 
 ## QuickStart
+
 * Start from bam files of IP sample and Input sample
 
 ```
-java -Xmx16g -jar circm6A.jar -ip IP.bam -input Input.bam -o output_dir/file_prefix
+java -Xmx16g -jar circm6A.jar -ip IP.bam -input Input.bam -o ./example
 ```
 
+* Running this instruction will result in getting a file named example_circ.bed. `./example` means output_dir/file_prefix
+
 ## Usage
+
+* More details of this tool can be found with -h parameter
 
 ```
 java -Xmx16g -jar circm6A.jar -h
@@ -60,14 +71,17 @@ For usage:
 	-h	show help text
 ```
 
-### Example
+* Tips: -g enables GT-AG filter of circRNA detecting. -r enables exon boundary filter of circRNA detecting.
+
+## Example
 
   ```
 java -Xmx16g -jar circm6A.jar -ip IP.bam -input Input.bam -r Gencode.gtf -g hg38.fa -o output_dir/file_prefix -dev 5 -sup 5
   ```
 
-### Output
-* output_dir/prefix_circ.bed
+## OutputHeaders
+
+* Here are definitions of headers in output file named `(output_dir/file_prefix)_circ.bed`
 
 | Field       | Description                           |
 | :---------- | :------------------------------------ |
@@ -84,12 +98,6 @@ java -Xmx16g -jar circm6A.jar -ip IP.bam -input Input.bam -r Gencode.gtf -g hg38
 | blockSizes   | Exon sizes                            |
 | blockStarts | Exon offsets                          |
 
-
-
-
-## Citation
-
-coming soon...
 
 
 ## License
