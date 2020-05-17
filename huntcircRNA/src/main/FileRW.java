@@ -1788,6 +1788,9 @@ public class FileRW {
 	 */
 	private static HashMap<String,JuncInfo> filtJuncTable(HashMap<String,JuncInfo> junc_map, IntervalTree<ArrayList<Gene>> genes) {
 		HashMap<String,JuncInfo> replace = new HashMap<>();
+		if (genes == null) {
+			return replace;
+		}
 		for (Entry<String, JuncInfo> entry : junc_map.entrySet()) {
 			JuncInfo the_junc = entry.getValue();
 			int start = the_junc.getSP();
