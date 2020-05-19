@@ -36,7 +36,7 @@ The tool is generated as circm6a.jar in this directory.
 * Start from bam files of IP sample and Input sample
 
 ```
-java -Xmx16g -jar circm6A.jar -ip IP.bam -input Input.bam -o ./example
+java -Xmx16g -jar circm6a.jar -ip IP.bam -input Input.bam -o ./example
 ```
 
 Running this instruction will result in getting a file named example_circ.bed. `./example` means output_dir/file_prefix
@@ -76,7 +76,7 @@ For usage:
 ## Example
 
   ```
-java -Xmx16g -jar circm6A.jar -ip ../test_data/HeLa_eluate_rep_1.chr22.bam -input ../test_data/HeLa_input_rep_1.chr22.bam -r ../test_data/gencode_chr22.gtf -g ../test_data/hg38_chr22.fa -o ../test_data/test_Hela
+java -Xmx16g -jar circm6a.jar -ip ../test_data/HeLa_eluate_rep_1.chr22.bam -input ../test_data/HeLa_input_rep_1.chr22.bam -r ../test_data/gencode_chr22.gtf -g ../test_data/hg38_chr22.fa -o ../test_data/example_Hela
   ```
 
 ## OutputHeaders

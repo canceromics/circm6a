@@ -229,8 +229,10 @@ public class InParam {
 			this.LackParam(for_help[5]);
 			out = false;
 		}
-		if (this.window_size == 0) {
-			this.LackParam(for_help[11]);
+		if (this.window_size <= 0 || this.peak_length <= 0 || this.sup_reads <= 0 || this.background_size < 0 
+				|| this.circ_length <= 0 || this.read_dev < 0 || this.p_value < 0) {
+			System.out.println("ERROR: Parameter(s) exist illegal negtive number");
+			out = false;
 		}
 		return out;
 	}

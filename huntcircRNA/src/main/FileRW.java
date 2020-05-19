@@ -223,7 +223,7 @@ public class FileRW {
 									value = new ArrayList<>();
 								}
 								value.add(gene);
-								gene_tree.put(start, end, value);
+								gene_tree.put(gene.getStart(), gene.getEnd(), value);
 							}
 							gene = new Gene();
 							gene.setStart(start);
@@ -721,11 +721,11 @@ public class FileRW {
 			for (Iterator<Entry<String, JuncInfo>> it = juncTable.get(chr).entrySet().iterator(); it.hasNext();) {
 				Entry<String, JuncInfo> entry = it.next();
 				JuncInfo the_junc = entry.getValue();
-				if (the_junc.getTR() < the_junc.getReadID().size() || the_junc.getInputReads() < the_junc.getInputids().size()) {
-					System.out.println(the_junc.getSP() + "\t" + the_junc.getEP());
-					System.out.println(the_junc.getTR() + "\t" + the_junc.getReadID().size());
-					System.out.println(the_junc.getInputReads() + "\t" + the_junc.getInputids().size());
-				}
+//				if (the_junc.getTR() < the_junc.getReadID().size() || the_junc.getInputReads() < the_junc.getInputids().size()) {
+//					System.out.println(the_junc.getSP() + "\t" + the_junc.getEP());
+//					System.out.println(the_junc.getTR() + "\t" + the_junc.getReadID().size());
+//					System.out.println(the_junc.getInputReads() + "\t" + the_junc.getInputids().size());
+//				}
 				if (the_junc.getInputids().size() + the_junc.getReadID().size() >= sup_read) {
 					Bed12 record = new Bed12();
 					record.setBlock_count(1);
@@ -1240,15 +1240,10 @@ public class FileRW {
 		String peak_file = args.getOut_prefix() + "_linear_peak.bed";
 		String peak_dev = args.getOut_prefix() + "_dev.bed";
 		String drop_file = args.getOut_prefix() + "_drop.dev";
-		String circ_high_file = args.getOut_prefix() + "_circ_peak_high.bed";
-		String circ_mid_file = args.getOut_prefix() + "_circ_peak_mid.bed";
-		String circ_low_file = args.getOut_prefix() + "_circ_peak_low.bed";
-		out_put.add(Bed12.getHeader() + "\tMethlaytionPercent\tCirc");
+		String circ_peak_file = args.getOut_prefix() + "_circ_peak.bed";
+		out_put.add(Bed12.getHeader().replace("score", "Pvalue") + "\tClassification");
 		fileWrite(peak_file, out_put);
-		out_put.set(0, Bed12.getHeader() + "\tMethlaytionPercent\tStat");
-		fileWrite(circ_high_file, out_put);
-		fileWrite(circ_mid_file, out_put);
-		fileWrite(circ_low_file, out_put);
+		fileWrite(circ_peak_file, out_put);
 		if (args.isRetain_test()) {
 			fileWrite(peak_dev, out_put);
 			fileWrite(drop_file, out_put);
@@ -1271,10 +1266,8 @@ public class FileRW {
 			IntervalTree<Double> peak_tree = new IntervalTree<>();
 			IntervalTree<JuncInfo> circ_tree = new IntervalTree<>();
 			peak_tree.setSentinel(null);
-			peak_tree.setSentinel(null);
-			ArrayList<String> circ_high = new ArrayList<>();
-			ArrayList<String> circ_mid = new ArrayList<>();
-			ArrayList<String> circ_low = new ArrayList<>();
+			circ_tree.setSentinel(null);
+			ArrayList<String> circ = new ArrayList<>();
 			
 			for (Entry<String, JuncInfo> entry : juncTable.get(chr).entrySet()) {
 				int start = entry.getValue().getSP();
@@ -1326,20 +1319,20 @@ public class FileRW {
 						break;
 					}
 				}
-				if (start_windows + end_windows >= args.getPeak_length() / window_size && start_windows != 0 && end_windows != 0){
+				if (start_windows + end_windows >= (args.getPeak_length() - 1) / window_size  + 1 && start_windows != 0 && end_windows != 0){
 					Bed12 record = new Bed12();
 					record.setChr(chr);
 					record.setStrand(entry.getValue().getStrand());
 					record.setScore(p_mean / (start_windows + end_windows));
 					record.setBlock_count(2);
 					StringBuffer name = new StringBuffer();
-					if (entry.getValue().getGenes().size() > 0){
-						name.append(entry.getValue().getGenes().get(0));
-						for (int i = 1; i < entry.getValue().getGenes().size(); ++i) {
-							name.append(':');
+					if (entry.getValue().getGenes().size() > 0) {
+						for (int i = 0; i < entry.getValue().getGenes().size(); ++i) {
 							name.append(entry.getValue().getGenes().get(i));
+							name.append(':');
 						}
 					}
+					name.append(chr);
 					name.append(':');
 					name.append(start - 1);
 					name.append('-');
@@ -1385,28 +1378,29 @@ public class FileRW {
 							input_read += node.getValue().getNo_xa();
 						}
 					}
-					record.getAdd_info().append('\t');
-					record.getAdd_info().append(Math.exp(Math.log(ip_read + 1) + Math.log(input_reads + 1) - Math.log(input_read + 1) - Math.log(ip_reads + 1)));
-					boolean strict = true;
-					double p_value = calP_ValueBack(fisher_test, args.getBackground_size(), chr, start - window_size, start - 1, itree.get(chr), itree_input.get(chr), null, false);
-					strict &= p_value >= p_threshold;
-					p_value = calP_ValueBack(fisher_test, args.getBackground_size(), chr, end + 1, end + window_size, itree.get(chr), itree_input.get(chr), null, false);
-					strict &= p_value >= p_threshold;
-					if (strict){
-						record.getAdd_info().append("\tstrict");
-					}
-					else{
-						record.getAdd_info().append("\tloose");
-					}
+//					record.getAdd_info().append('\t');
+//					record.getAdd_info().append(Math.exp(Math.log(ip_read + 1) + Math.log(input_reads + 1) - Math.log(input_read + 1) - Math.log(ip_reads + 1)));
+//					boolean strict = true;
+//					double p_value = calP_ValueBack(fisher_test, args.getBackground_size(), chr, start - window_size, start - 1, itree.get(chr), itree_input.get(chr), null, false);
+//					strict &= p_value >= p_threshold;
+//					p_value = calP_ValueBack(fisher_test, args.getBackground_size(), chr, end + 1, end + window_size, itree.get(chr), itree_input.get(chr), null, false);
+//					strict &= p_value >= p_threshold;
+//					if (strict){
+//						record.getAdd_info().append("\tstrict");
+//					}
+//					else{
+//						record.getAdd_info().append("\tloose");
+//					}
 					if (entry.getValue().getReadID().size() > 0) {
-						circ_high.add(record.toString());
+						record.getAdd_info().append("\thigh confidence");
 					}
 					else if (entry.getValue().getSingle_ip_reads() > 0) {
-						circ_mid.add(record.toString());
+						record.getAdd_info().append("\tmoderate confidence");
 					}
 					else {
-						circ_low.add(record.toString());
+						record.getAdd_info().append("\tlow confidence");
 					}
+					circ.add(record.toString());
 				}
 				Iterator<Node<ReadInfo>> nodes = itree.get(chr).overlappers(start + halfDev, start + halfDev);
 				while (nodes.hasNext()) {
@@ -1437,9 +1431,7 @@ public class FileRW {
 					}
 				}
 			}
-			fileAppend(circ_high_file, circ_high);
-			fileAppend(circ_mid_file, circ_mid);
-			fileAppend(circ_low_file, circ_low);
+			fileAppend(circ_peak_file, circ);
 			ArrayList<String> out_dev = new ArrayList<>();
 			ArrayList<Double> p_values = calP_ValueBack(fisher_test, args.getBackground_size(), chr, 1, chr_length, window_size, itree.get(chr), itree_input.get(chr), null, true);
 //			for (int i = 3141540; i < 3141560; ++i) {
@@ -1706,20 +1698,20 @@ public class FileRW {
 					Node<ReadInfo> node = count_nodes.next();
 					input_read += node.getValue().getLinear();
 				}
-				record.getAdd_info().append('\t');
-				if (record.getScript() == null) {
-					record.getAdd_info().append("no_script");//Math.exp(Math.log(ip_read) + Math.log(input_reads) - Math.log(input_read) - Math.log(ip_reads)));
-				}
-				else {
-					record.getAdd_info().append(Math.exp(Math.log(ip_read + 1) + Math.log(input_reads + 1) - Math.log(input_read + 1) - Math.log(ip_reads + 1) - Math.log(record.getScript().getEnd() - record.getScript().getStart())));
-				}
-				Iterator<Node<JuncInfo>> nodes = circ_tree.overlappers(start, end);
-				if (nodes.hasNext()){
-					record.getAdd_info().append("\tshare");
-				}
-				else{
-					record.getAdd_info().append("\tuniq");
-				}
+//				record.getAdd_info().append('\t');
+//				if (record.getScript() == null) {
+//					record.getAdd_info().append("no_script");//Math.exp(Math.log(ip_read) + Math.log(input_reads) - Math.log(input_read) - Math.log(ip_reads)));
+//				}
+//				else {
+//					record.getAdd_info().append(Math.exp(Math.log(ip_read + 1) + Math.log(input_reads + 1) - Math.log(input_read + 1) - Math.log(ip_reads + 1) - Math.log(record.getScript().getEnd() - record.getScript().getStart())));
+//				}
+//				Iterator<Node<JuncInfo>> nodes = circ_tree.overlappers(start, end);
+//				if (nodes.hasNext()){
+//					record.getAdd_info().append("\tshare");
+//				}
+//				else{
+//					record.getAdd_info().append("\tuniq");
+//				}
 				out_put.add(record.toString());
 			}
 			fileAppend(peak_file, out_put);
@@ -1750,14 +1742,14 @@ public class FileRW {
 						Iterator<Node<JuncInfo>> nodes = circ_tree.overlappers(start, end);
 						shared |= nodes.hasNext();
 					}
-					record.getAdd_info().append('\t');
-					record.getAdd_info().append(Math.exp(Math.log(ip_read) + Math.log(input_reads) - Math.log(input_read) - Math.log(ip_reads) - Math.log(record.getScript().getEnd() - record.getScript().getStart())));
-					if (shared){
-						record.getAdd_info().append("\tshare");
-					}
-					else{
-						record.getAdd_info().append("\tuniq");
-					}
+//					record.getAdd_info().append('\t');
+//					record.getAdd_info().append(Math.exp(Math.log(ip_read) + Math.log(input_reads) - Math.log(input_read) - Math.log(ip_reads) - Math.log(record.getScript().getEnd() - record.getScript().getStart())));
+//					if (shared){
+//						record.getAdd_info().append("\tshare");
+//					}
+//					else{
+//						record.getAdd_info().append("\tuniq");
+//					}
 					out_put.add(record.toString());
 				}
 			}
