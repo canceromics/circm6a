@@ -2,6 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="huntcircRNA/src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="C:/work/workspace/circRNA_lib/htsjdk-2.10.1.jar" sourcepath="C:/work/workspace/circRNA_lib/htsjdk-2.10.1-sources.jar"/>
+	<classpathentry kind="lib" path="D:/work/workspace/circRNA_lib/htsjdk-2.10.1.jar" sourcepath="D:/work/workspace/circRNA_lib/htsjdk-2.10.1-sources.jar"/>
+	<classpathentry kind="lib" path="D:/work/workspace/circRNA_lib/commons-math3-3.6.1.jar" sourcepath="D:/work/workspace/circRNA_lib/commons-math3-3.6.1-src.zip"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

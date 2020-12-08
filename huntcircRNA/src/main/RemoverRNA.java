@@ -3,7 +3,6 @@ package main;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -61,8 +60,7 @@ public class RemoverRNA {
 		BufferedReader reader = null;
 		try {
 			if (file.equals("/rRNA.bed")) {
-				InputStream is = Object.class.getResourceAsStream(file);
-				isr = new InputStreamReader(is, "UTF-8");
+				isr = new InputStreamReader(RemoverRNA.class.getResourceAsStream(file), "UTF-8");
 			}
 			else {
 				isr = new InputStreamReader(new FileInputStream(file), "UTF-8");
@@ -72,7 +70,7 @@ public class RemoverRNA {
 			while ((line = reader.readLine()) != null) {
 				String[] cols = line.split("\t");
 				String chr = cols[0];
-				if (this.rRNA_trees.containsKey(chr)){
+				if (!this.rRNA_trees.containsKey(chr)){
 					IntervalTree<Integer> temp_T = new IntervalTree<>();
 					temp_T.setSentinel(null);
 					this.rRNA_trees.put(chr, temp_T);

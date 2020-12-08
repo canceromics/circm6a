@@ -1,7 +1,12 @@
 package main;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+
 public class InParam {
 	
+	private static InParam param = new InParam();
 	private String ip_file=null;
 	private String input_file=null;
 	private String trim_file=null;
@@ -11,172 +16,152 @@ public class InParam {
 	private String rrna_bed=null;
 	private String circ_bed=null;
 	private String adjust_p=null;
+	private String combine_p="log";
 	private int sup_reads=2;
-	private int background_size=0;
+	private int ip_sup=2;
 	private int window_size=25;
 	private int peak_length=100;
 	private int circ_length=100;
 	private int circ_max_length=200000;
-	private int read_dev=5;
+	private int read_dev=8;
+	private int map_quality=10;
 	private double p_value=0.05;
+	private double propor=1.0;
+	private boolean peak_BSJ=false;
 	private boolean out_detail=false;
-	private boolean pair_mode=true;
+	private boolean peak_quali=false;
+	private boolean XA_mode=false;
 	private boolean uniq_mode=false;
-	private boolean retain_test=false;
+//	private boolean retain_test=false;
 	private boolean help_flag=false;
 	
-	public InParam(String[] args) {
-		String[] to_read={"-ip", "-input", "-trim", "-g", "-r", "-o", "-rrna", "-circ", "-adjust", "-sup", "-back", "-window", "-peak", "-cl", "-clmax", "-dev", "-pt", "-detail", "-unpair", "-uniq", "-test", "-h"};
+	
+	private InParam() {
+	}
+	
+	public static InParam getParams() {
+		return param;
+	}
+	
+	public void SetParams(String[] args) {
 		for (int i = 0; i < args.length; ++i) {
 			if (args[i].charAt(0) == '-') {
-				if (args[i].equals(to_read[0])) {
-					++i;
-					if (i < args.length) {
-						this.ip_file = args[i];
-					}
-				}
-				else if (args[i].equals(to_read[1])) {
-					++i;
-					if (i < args.length) {
-						this.input_file = args[i];
-					}
-				}
-				else if (args[i].equals(to_read[2])) {
-					++i;
-					if (i < args.length) {
-						this.trim_file = args[i];
-					}
-				}
-				else if (args[i].equals(to_read[3])) {
-					++i;
-					if (i < args.length) {
-						this.genome_file = args[i];
-					}
-				}
-				else if (args[i].equals(to_read[4])) {
-					++i;
-					if (i < args.length) {
-						this.gtf_file = args[i];
-					}
-				}
-				else if (args[i].equals(to_read[5])) {
-					++i;
-					if (i < args.length) {
-						this.out_prefix = args[i];
-					}
-				}
-				else if (args[i].equals(to_read[6])) {
-					++i;
-					if (i < args.length && args[i].charAt(0) != '-') {
-						this.rrna_bed = args[i];
-					}
-					else {
-						this.rrna_bed = "/rRNA.bed";
-						i--;
-					}
-				}
-				else if (args[i].equals(to_read[7])) {
-					++i;
-					if (i < args.length) {
-						this.circ_bed = args[i];
-					}
-				}
-				else if (args[i].equals(to_read[8])) {
-					++i;
-					if (i < args.length) {
-						this.adjust_p = args[i];
-					}
-				}
-				else if (args[i].equals(to_read[9])) {
-					++i;
-					if (i < args.length) {
-						this.sup_reads = Integer.parseInt(args[i]);
-						if (this.sup_reads < 0) {
-							this.sup_reads = - this.sup_reads;
-						}
-					}
-				}
-				else if (args[i].equals(to_read[10])) {
-					++i;
-					if (i < args.length) {
-						this.background_size = Integer.parseInt(args[i]);
-						if (this.background_size < 0) {
-							this.background_size = - this.background_size;
-						}
-					}
-				}
-				else if (args[i].equals(to_read[11])) {
-					++i;
-					if (i < args.length) {
-						this.window_size = Integer.parseInt(args[i]);
-						if (this.window_size < 0) {
-							this.window_size = - this.window_size;
-						}
-					}
-				}
-				else if (args[i].equals(to_read[12])) {
-					++i;
-					if (i < args.length) {
-						this.peak_length = Integer.parseInt(args[i]);
-						if (this.peak_length < 0) {
-							this.peak_length = - this.peak_length;
-						}
-					}
-				}
-				else if (args[i].equals(to_read[13])) {
-					++i;
-					if (i < args.length) {
-						this.circ_length = Integer.parseInt(args[i]);
-						if (this.circ_length < 0) {
-							this.circ_length = - this.circ_length;
-						}
-					}
-				}
-				else if (args[i].equals(to_read[14])) {
-					++i;
-					if (i < args.length) {
-						this.circ_max_length = Integer.parseInt(args[i]);
-						if (this.circ_max_length < 0) {
-							this.circ_max_length = - this.circ_max_length;
-						}
-					}
-				}
-				else if (args[i].equals(to_read[15])) {
-					++i;
-					if (i < args.length) {
-						this.read_dev = Integer.parseInt(args[i]);
-						if (this.read_dev < 0) {
-							this.read_dev = - this.read_dev;
-						}
-					}
-				}
-				else if (args[i].equals(to_read[16])) {
-					++i;
-					if (i < args.length) {
-						this.p_value = Double.parseDouble(args[i]);
-						if (this.p_value < 0) {
-							this.p_value = - this.p_value;
-						}
-					}
-				}
-				else if (args[i].equals(to_read[17])) {
-					this.out_detail = true;
-				}
-				else if (args[i].equals(to_read[18])) {
-					this.pair_mode = false;
-				}
-				else if (args[i].equals(to_read[19])) {
-					this.uniq_mode = true;
-				}
-				else if (args[i].equals(to_read[20])) {
-					this.retain_test = true;
-				}
-				else if (args[i].equals(to_read[21])) {
-					this.help_flag = true;
-				}
-				else {
+				switch (args[i].toLowerCase()) {
+				case "-ip":
+					param.ip_file = ++i < args.length ? args[i] : param.ip_file;
+					break;
+
+				case "-input":
+					param.input_file = ++i < args.length ? args[i] : param.input_file;
+					break;
+					
+				case "-trim":
+					param.trim_file = ++i < args.length ? args[i] : param.trim_file;
+					break;
+					
+				case "-g":
+					param.genome_file = ++i < args.length ? args[i] : param.genome_file;
+					break;
+					
+				case "-r":
+					param.gtf_file = ++i < args.length ? args[i] : param.gtf_file;
+					break;
+					
+				case "-o":
+					param.out_prefix = ++i < args.length ? args[i] : param.out_prefix;
+					break;
+					
+				case "-rrna":
+					param.rrna_bed = i + 1 < args.length && args[i + 1].charAt(0) != '-' ? args[++i] : "/rRNA.bed";
+					break;
+					
+				case "-circ":
+					param.circ_bed = ++i < args.length ? args[i] : param.circ_bed;
+					break;
+					
+				case "-adjust":
+					param.adjust_p = ++i < args.length ? args[i] : param.adjust_p;
+					break;
+					
+				case "-combine":
+					param.combine_p = ++i < args.length ? args[i] : param.adjust_p;
+					break;
+					
+				case "-sup":
+					param.sup_reads = ++i < args.length ? Math.abs(Integer.parseInt(args[i])) : param.sup_reads;
+					break;
+					
+				case "-ipsup":
+					param.ip_sup = ++i < args.length ? Math.abs(Integer.parseInt(args[i])) : param.ip_sup;
+					break;
+					
+				case "-ippro":
+					param.propor = ++i < args.length ? Math.abs(Double.parseDouble(args[i])) : param.propor;
+					break;
+					
+				case "-window":
+					param.window_size = ++i < args.length ? Math.abs(Integer.parseInt(args[i])) : param.window_size;
+					break;
+					
+				case "-peak":
+					param.peak_length = ++i < args.length ? Math.abs(Integer.parseInt(args[i])) : param.peak_length;
+					break;
+					
+				case "-cl":
+					param.circ_length = ++i < args.length ? Math.abs(Integer.parseInt(args[i])) : param.circ_length;
+					break;
+					
+				case "-clmax":
+					param.circ_max_length = ++i < args.length ? Math.abs(Integer.parseInt(args[i])) : param.circ_max_length;
+					break;
+					
+				case "-mapq":
+					param.map_quality = ++i < args.length ? Math.abs(Integer.parseInt(args[i])) : param.map_quality;
+					break;
+					
+				case "-dev":
+					param.read_dev = ++i < args.length ? Math.abs(Integer.parseInt(args[i])) : param.read_dev;
+					break;
+					
+				case "-pt":
+					param.p_value = ++i < args.length ? Math.abs(Double.parseDouble(args[i])) : param.p_value;
+					break;
+					
+				case "-detail":
+					param.out_detail = true;
+					break;
+					
+				case "-xa":
+					param.XA_mode = true;
+					break;
+					
+				case "-uniq":
+					param.uniq_mode = true;
+					break;
+					
+				case "-peakq":
+					param.peak_quali = true;
+					break;
+					
+				case "-peakb":
+					param.peak_BSJ = true;
+					break;
+//					
+//				case "-test":
+//					param.retain_test = true;
+//					break;
+					
+				case "-h":
+					param.help_flag = true;
+					break;
+					
+				default:
 					System.out.println("Unknown parameter: " + args[i]);
+					break;
 				}
+			}
+			else {
+				System.out.println("Unknown parameter: " + args[i]);
 			}
 		}
 	}
@@ -186,33 +171,22 @@ public class InParam {
 	 * @return true if pass
 	 */
 	public boolean completeArgs() {
-		String[] for_help={"\t-ip\tIP sam/bam file searching back junctions",
-				"\t-input\tINPUT sam/bam file searching back junctions, calling IP peaks with IP file)",
-				"\t-trim\ttrimed sam/bam file calling peak instead of INPUT file",
-				"\t-g\ta reference genome file which is the same as the mapping one",
-				"\t-r\ta reference gencode file in gtf format",
-				"\t-o\tprefix of out files",
-				"\t-rrna\tenable rRNA remove (can specify a bed file)",
-				"\t-circ\tprovide circ bed file to call peak",
-				"\t-adjust\tchoose method for p-value adjusting [bon|bh](bon means Bonferroni, bh means Benjamini and Hochberg)",
-				"\t-sup\tmin support number of a back junction (default is 2)",
-				"\t-back\tbackground size in peak calling (0 for whole genome, default is 0)",
-				"\t-window\twindow size in peak calling (default is 25)",
-				"\t-peak\tmin peak length in peak calling (default is 100)",
-				"\t-cl\tcutoff of distance bewteen junction points (default is 100)",
-				"\t-clmax\tupper bound cutoff of distance bewteen junction points (default is 200000)",
-				"\t-dev\tmax deviation permitted in searching back junctions (default is 5)",
-				"\t-pt\tthreshold for p-value in peak calling (default is 0.05)",
-				"\t-detail\toutput circ detail file",
-				"\t-unpair\tunable pair end examination of back junction",
-				"\t-uniq\tenable using only uniq mapping reads",
-				"\t-h\tshow help text"
-		};
 		boolean out = true;
 		if (this.help_flag) {
-			System.out.println("For usage:");
-			for (int j=0; j < for_help.length; ++j) {
-				System.out.println(for_help[j]);
+			try (BufferedReader reader = new BufferedReader(new InputStreamReader(RemoverRNA.class.getResourceAsStream("/HelpDocument"), "UTF-8"))){
+				String line = null;
+				while ((line = reader.readLine()) != null) {
+					String[] cols = line.split("\t");
+					if (cols.length == 3) {
+						System.out.printf("\t%-24s%s\n", cols[1], cols[2]);
+					}
+					else {
+						System.out.println(line);
+					}
+					
+				}
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
 			return false;
 		}
@@ -220,18 +194,17 @@ public class InParam {
 			this.input_file = this.trim_file;
 			this.trim_file = null;
 		}
-		if (this.ip_file == null && this.input_file == null) {
-			this.LackParam(for_help[0]);
-			System.out.println(for_help[1]);
+		if (this.input_file == null) {
+			this.LackParam("<input.bam>");
 			out = false;
 		}
 		if (this.out_prefix == null) {
-			this.LackParam(for_help[5]);
+			this.LackParam("<path/out_prefix>");
 			out = false;
 		}
-		if (this.window_size <= 0 || this.peak_length <= 0 || this.sup_reads <= 0 || this.background_size < 0 
+		if (this.window_size <= 0 || this.peak_length <= 0 || this.sup_reads <= 0 || this.ip_sup < 0
 				|| this.circ_length <= 0 || this.read_dev < 0 || this.p_value < 0) {
-			System.out.println("ERROR: Parameter(s) exist illegal negtive number");
+			System.out.println("ERROR: Parameter(s) exist illegal negtive number or 0");
 			out = false;
 		}
 		return out;
@@ -273,8 +246,8 @@ public class InParam {
 		return sup_reads;
 	}
 
-	public int getBackground_size() {
-		return background_size;
+	public int getIp_sup() {
+		return ip_sup;
 	}
 
 	public int getWindow_size() {
@@ -296,18 +269,18 @@ public class InParam {
 	public boolean isOut_detail() {
 		return out_detail;
 	}
-
-	public boolean isPair_mode() {
-		return pair_mode;
-	}
-
+	
 	public boolean isUniq_mode() {
 		return uniq_mode;
 	}
 	
-	public boolean isRetain_test() {
-		return retain_test;
+	public String getCombine_p() {
+		return combine_p;
 	}
+//	
+//	public boolean isRetain_test() {
+//		return retain_test;
+//	}
 	
 	public String getTrim_file() {
 		return trim_file;
@@ -321,7 +294,33 @@ public class InParam {
 		return circ_max_length;
 	}
 
+	public int getMapQuality() {
+		return map_quality;
+	}
+
+	public double getPropor() {
+		return propor;
+	}
+	
 	public String getAdjsut_p() {
 		return adjust_p;
 	}
+	
+	public boolean isXA_mode() {
+		return XA_mode;
+	}
+	
+	public boolean isPeakQuality() {
+		return peak_quali;
+	}
+	
+	public boolean isPeakBSJ() {
+		return peak_BSJ;
+	}
+	
+	void setPropor(double propor) {
+		this.propor = propor;
+	}
+	
+	
 }
