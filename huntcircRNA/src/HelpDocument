@@ -1,0 +1,43 @@
+circm6A is a java tool for circRNA finding and m6A peak-calling through RNA-seq
+Usage:
+	java [-Xmx24g] -jar circm6a.jar -input <input.bam> -g <genome.fa> -o <path/out_prefix> [-ip ip.bam] [-r gencode.gtf] [options]
+	
+	<input.bam>	a bam/sam file of a sample mapping by bwa.
+	<genome.fa>	a fasta file of the genome. The same as the file used by bwa is recommended.
+	<path/out_prefix>	the path should exist and out_prefix is the first part of the output file name.
+
+Options:
+Input File:
+	-input <input.bam>	a bam/sam file of non-IP sample mapping by bwa.
+	-ip <IP.bam>	a bam/sam file of MeRIP sample mapping by bwa.
+	-g <genome.fa>	a fasta file of the genome. Used to locate splicing signal.
+	-r <gencode.gtf>	a gtf file to annote the genome. Used to locate exons, transcripts and genes.
+	-rrna [rrnas.bed]	a bed file includes rrna regions. There is a build-in bed when no specific bed provided.
+	-circ <circRNA.bed>	a bed file includes circRNA regions. This means using these regions to call-peak. (circRNA detection will close when a circRNA.bed is given)
+	
+circRNA Detection:
+	-sup <int>	minimal number of BSJ reads to support a latent circRNA to be reported. (Default 2)
+	-cl <int>	minimal length of a region to consider as a latent circRNA. (Default 100)
+	-clmax <int>	maximal length of a region to consider as a latent circRNA. (Default 200000)
+	-mapq <int>	minimal mapping quality of a mapping record to detect a latent circRNA. (Default 10)
+	-dev <int>	maximal deviation of a mapping record to detect or support a latent circRNA. (Default 8)
+	-xa	enable XA field detection. Waring: a XA record considered as a new alignment in this mode.
+	-uniq	enable unique mapping records instead of major mapping record to detect circRNA. This takes priority over XA field.
+	
+Peak Calling:
+	-trim <trim.bam>	a bam/sam file of non-IP sample to replace input file to call m6A peak.
+	-adjust <bon|bh>	choose a method to adjust p-values of windows. "bon" means Bonferroni, "bh" means Benjamini and Hochberg. Default method is not to adjust p-value.
+	-combine<log|fm|ave>	choose a method to combine p-values of windows as p-value of peak. "log" means -logFDR, "fm" means fisher method, "ave" means average.
+	-ipsup <int>	minimal number of MeRIP BSJ reads to support a latent m6A peak to be high confidence. (Default 2)
+	-ippro <float>	minimal number of the proportion of MeRIP BSJ ratio and non-IP BSJ ratio. (Default 1.0)
+	-window <int>	the size of each window in peak calling. (Default 25)
+	-peak <int>	minimal length of a latent m6A peak. (Default 100)
+	-pt <float>	p-value threshold of each window. (Default 0.05)
+	-peakq	enable alignments reaching minimal mapping quality instead of all alignments to call m6A peak.
+	-peakb	enable alignments of BSJ reads instead of all alignments to call m6A peak. This can work with quality mapping alignments.
+	
+Output:
+	-o <path/prefix>	the path should exist and prefix is the first part of the output file name. "prefix_circRNAs.txt" contains circRNA information, 
+		"prefix_circ_peak.bed" contains circle m6A peak information, "prefix_linear_peak.bed" contains peaks in MeRIP and non-IP samples.
+	-detail	enable reporting BSJ reads IDs in circRNA information and low confidence m6A peaks in circle m6A peak information. 
+	-h	to get this help message.
