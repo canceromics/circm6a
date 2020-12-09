@@ -74,7 +74,7 @@ java -Xmx16g -jar circm6a.jar -ip test_data/HeLa_eluate_rep_1.chr22.bam -input t
 * Here are definitions of headers in output file named `(output_dir/file_prefix)_circRNAs.txt`
 
 | Field       | Description                           |
-| :---------- | :------------------------------------ |
+| ---------- | ------------------------------------ |
 | Chr | Chromosome Name|
 | Start | Start of circular RNA |
 | End | End of circular RNA |
@@ -88,8 +88,9 @@ java -Xmx16g -jar circm6a.jar -ip test_data/HeLa_eluate_rep_1.chr22.bam -input t
 | IDs | IDs of BSJ reads detecting circular RNA if output in detail |
 
 * Here are definitions of headers in output file named `(output_dir/file_prefix)_circ_peak.bed` and `(output_dir/file_prefix)_linear_peak.bed`
+
 | Field       | Description                           |
-| :---------- | :------------------------------------ |
+| ---------- | ------------------------------------ |
 | Chr | Chromosome Name|
 | Start | Start of peak |
 | End | End of peak |
