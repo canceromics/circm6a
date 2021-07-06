@@ -13,7 +13,7 @@ Circm6A is a powerful tool for detection  m6A modification of circular RNA(circR
 * [Usage](#Usage)
 * [Example](#Example)
 * [Output Headers](#OutputHeaders)
-* [Tips](#Tips)
+* [Limitations](#Limitations)
 * [License](#License)
 
 ## Requirements
@@ -109,7 +109,7 @@ java -Xmx16g -jar circm6a.jar -ip test_data/HeLa_eluate_rep_1.chr22.bam -input t
 | Proportion | Proportion of ratio of BSJ reads against to total reads between MeRIP sample and non-IP sample |
 
 
-## Tips
+## Limitations
 
 <img src="m6A-RIP.png" align="left" />
 
