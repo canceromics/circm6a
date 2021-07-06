@@ -113,7 +113,7 @@ java -Xmx16g -jar circm6a.jar -ip test_data/HeLa_eluate_rep_1.chr22.bam -input t
 
 <img src="m6A-RIP.png" align="left" />
 
-The limitation of classic MeRIP-seq technology is that the library-building strategy of RNA fragmentation before MeRIP. Therefore, some m6A modification of the BSJ-distal m6A-circRNAs may be missed and even wrongly classified to linear RNAs, since that the m6A modifications and their BSJ sites are likely to be separated during RNA fragmentation, like mentioned above in last figure. To retrieve those missed BSJ-distal m6A-circRNAs, we next built a machine learning model to predict them. 
+Circm6A still has limitations when being applied to the MeRIP-seq data that was generated using the strategy of fragmentation before m6A-IP, which is the more frequently used library construction strategy since it could detect higher resolution m6A sites compared to the strategy of fragmentation after m6A-IP. For the strategy of fragmentation before m6A-IP, if the m6As are located in the circRNAs but distal to BSJs, the circRNA fragments pulled down by m6A-IP will not have BSJ signal thus the m6A enrichment signal will not be connected with the circRNAs. Therefore, the m6A-circRNAs with m6As distal to BSJs will not be detected by Circm6As and other circRNA detection tools. The analysis on our simulated data validated this assumption. To address this limitation, we developed a random forest model for the prediction of m6A modification status from the MeRIP-seq data. The random forest model will complement the Circm6A results.
 
 ## License
 Licensed GPLv3 for open source use or contact zuoLab (zuozhx@sysucc.org.cn) for commercial use.
