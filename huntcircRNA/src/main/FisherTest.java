@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.apache.commons.math3.distribution.ChiSquaredDistribution;
+import org.apache.commons.math3.distribution.HypergeometricDistribution;
 
 public class FisherTest {
 	
@@ -13,8 +14,14 @@ public class FisherTest {
 		for (String s : args) {
 			l.add(Double.parseDouble(s));
 		}
-		FisherTest ft = new FisherTest(100694394 + 49026762 + 32384);
-		System.out.println(ft.calpValue(3, 5, 18821682 - 3, 100694394 -5, 2));
+		int a = 2;
+		int b = 0;
+		int c = 1;
+		int d = 1;
+		FisherTest ft = new FisherTest(a + b + c + d + 32384);
+		HypergeometricDistribution hd = new HypergeometricDistribution(a + b + c + d, a + b, a + c);
+		System.out.println(ft.calpValue(a, b, c, d, 2));
+		System.out.println(hd.cumulativeProbability(a - 1, a + b));
 		System.out.println("END");
 	}
 	

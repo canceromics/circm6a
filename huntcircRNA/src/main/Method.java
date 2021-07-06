@@ -373,7 +373,7 @@ public class Method {
 		return reads;
 	}
 
-	private void putRecordToRead(SAMRecord record, Alignment read,HashMap<String, IntervalTree<MappingStat>> mapping_tree) {
+	private void putRecordToRead(SAMRecord record, Alignment read, HashMap<String, IntervalTree<MappingStat>> mapping_tree) {
 		if (record.getReadPairedFlag() && record.getSecondOfPairFlag()) {
 			if (read.getPairRead() == null) {
 				read.setPairRead(new Alignment(0, 0, read.getID()));
@@ -1131,7 +1131,7 @@ public class Method {
 		if ("bon".equals(method)) {
 			double n = (double) p_value.size();
 			for (int i = 0; i < p_value.size() ; ++i) {
-				p_value.get(i).setFdr(p_value.get(i).getScore() * n / i);
+				p_value.get(i).setFdr(p_value.get(i).getScore() * n / (i + 1));
 			}
 		}
 		else if ("bh".equals(method)) {

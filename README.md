@@ -13,6 +13,7 @@ Circm6A is a powerful tool for detection  m6A modification of circular RNA(circR
 * [Usage](#Usage)
 * [Example](#Example)
 * [Output Headers](#OutputHeaders)
+* [Tips](#Tips)
 * [License](#License)
 
 ## Requirements
@@ -108,6 +109,11 @@ java -Xmx16g -jar circm6a.jar -ip test_data/HeLa_eluate_rep_1.chr22.bam -input t
 | Proportion | Proportion of ratio of BSJ reads against to total reads between MeRIP sample and non-IP sample |
 
 
+## Tips
+
+<img src="m6A-RIP.png" align="left" />
+
+The limitation of classic MeRIP-seq technology is that the library-building strategy of RNA fragmentation before MeRIP. Therefore, some m6A modification of the BSJ-distal m6A-circRNAs may be missed and even wrongly classified to linear RNA¡¯s since that the m6A modifications and their BSJ sites are likely to be separated during RNA fragmentation , like mentioned above in last figure. To retrieve those missed BSJ-distal m6A-circRNAs, we next built a machine learning model to predict them. 
 
 ## License
 Licensed GPLv3 for open source use or contact zuoLab (zuozhx@sysucc.org.cn) for commercial use.
