@@ -2,6 +2,8 @@
 
 # Circm6A
 
+[![check in Biotreasury](https://img.shields.io/badge/Biotreasury-collected-brightgreen)](https://biotreasury.rjmart.cn/#/tool?id=20939) 
+ 
 Circm6A is a powerful tool for detection  m6A modification of circular RNA(circRNA).
 
 
